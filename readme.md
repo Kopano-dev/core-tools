@@ -1,11 +1,32 @@
-kopano-rules
+kopano-cleanup
+==============
 
+
+The following scripts allow you to automatically delete all items older than x days in a users **Junk E-mail** and **Deleted Items** folder.
+
+## Dependencies
+
+
+cleanup depends on a few Python libraries:
+
+* [python-kopano](https://download.kopano.io/supported/core:/final/)
+* [python-mapi](https://download.kopano.io/supported/core:/final/)
+ 
+
+## Usage
+
+
+  python cleanup.py --user \<user\> --junk --wastebasket --days \<days\>
+
+
+kopano-rules
+============
 
 kopano-rules is a cli to modify or change a server side rule
 
 
-Features
-========
+## Features
+
 
 kopano-rules supports:
 
@@ -16,18 +37,18 @@ kopano-rules supports:
 
 
 
-Dependencies
-============
+## Dependencies
+
 
 kopano-rules depends on a few Python libraries:
 
-* [python-kopano](https://github.com/kopanogroupware/python-kopano.git)
-* [python-mapi](https://download.kopano.com/community/final/)
+* [python-kopano](https://download.kopano.io/supported/core:/final/)
+* [python-mapi](https://download.kopano.io/supported/core:/final/)
 * [terminaltables](https://pypi.python.org/pypi/terminaltables)
 
 
-Usage
-=====
+## Usage
+
 
 #### list rules
 
