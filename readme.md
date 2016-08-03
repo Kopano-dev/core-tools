@@ -4,14 +4,7 @@ kopano-cleanup
 
 The following scripts allow you to automatically delete all items older than x days in a users **Junk E-mail** and **Deleted Items** folder.
 
-## Dependencies
 
-
-cleanup depends on a few Python libraries:
-
-* [python-kopano](https://download.kopano.io/supported/core:/final/)
-* [python-mapi](https://download.kopano.io/supported/core:/final/)
- 
 
 ## Usage
 
@@ -42,8 +35,7 @@ kopano-rules supports:
 
 kopano-rules depends on a few Python libraries:
 
-* [python-kopano](https://download.kopano.io/supported/core:/final/)
-* [python-mapi](https://download.kopano.io/supported/core:/final/)
+
 * [terminaltables](https://pypi.python.org/pypi/terminaltables)
 
 
