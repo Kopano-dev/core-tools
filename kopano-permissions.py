@@ -63,11 +63,12 @@ def getpermissions(folder, customname=None):
     acl_table = folder.mapiobj.OpenProperty(PR_ACL_TABLE, IID_IExchangeModifyTable, 0, 0)
     table = acl_table.GetTable(0)
     cols = table.QueryColumns(TBL_ALL_COLUMNS)
-    table.SetColumns(cols, 0)
+    table.SetColumns([PR_ENTRYID, PR_MEMBER_ID, CHANGE_PROP_TYPE(PR_MEMBER_NAME, PT_UNICODE), PR_MEMBER_RIGHTS], TBL_BATCH)
     acltable = table.QueryRows(-1, 0)
+
     for acl in acltable:
         for prop in acl:
-            if prop.ulPropTag == 0x6672001E:
+            if prop.ulPropTag == 0x6672001F:
                 name = prop.Value
             if prop.ulPropTag == 0x66730003:
                 try:
@@ -94,10 +95,10 @@ def getdelegateuser(user):
     if fbProps[0].ulPropTag == PR_SCHDINFO_DELEGATE_ENTRYIDS:
         for i in range(0, len(fbProps[0].Value)):
             try:
-                names['users'][unidecode(fbProps[1].Value[i])]
+                names['users'][fbProps[1].Value[i]]
             except:
-                names['users'][unidecode(fbProps[1].Value[i])] = {}
-                names['users'][unidecode(fbProps[1].Value[i])]['private'] = bool(fbProps[2].Value[i])
+                names['users'][fbProps[1].Value[i]] = {}
+                names['users'][fbProps[1].Value[i]]['private'] = bool(fbProps[2].Value[i])
 
     for rule in inbox.rules():
         if rule.name == 'Delegate Meetingrequest service':
@@ -107,16 +108,16 @@ def getdelegateuser(user):
                         entryid = prop.ulPropTag
                     if prop.ulPropTag == 805371935:
                         try:
-                            names['users'][unidecode(prop.Value)]
+                            names['users'][prop.Value]
                         except:
-                            names['users'][unidecode(prop.Value)] = {}
+                            names['users'][prop.Value] = {}
 
-                        names['users'][unidecode(prop.Value)]['delegate'] = True
+                        names['users'][prop.Value]['delegate'] = True
 
     return names
 
 def listpermissions(user, options):
-    tabledelagate_data = [["username","See private items", "Send copy"]]
+    tabledelagate_data = [["User","See private items", "Send copy"]]
     #delegate info
     delnames =getdelegateuser(user)
 
@@ -205,12 +206,12 @@ def removepermissions(user, options, folder, customname=None):
     acl_table = folder.mapiobj.OpenProperty(PR_ACL_TABLE, IID_IExchangeModifyTable, 0, 0)
     table = acl_table.GetTable(0)
     cols = table.QueryColumns(TBL_ALL_COLUMNS)
-    table.SetColumns(cols, 0)
+    table.SetColumns([PR_ENTRYID, PR_MEMBER_ID, CHANGE_PROP_TYPE(PR_MEMBER_NAME, PT_UNICODE), PR_MEMBER_RIGHTS], TBL_BATCH)
     acltable = table.QueryRows(-1, 0)
     remove = False
     for acl in acltable:
         for prop in acl:
-            if prop.ulPropTag == 0x6672001E:
+            if prop.ulPropTag == 0x6672001F:
                 if removeuser == prop.Value:
                     rowlist = [ROWENTRY(
                         ROW_REMOVE,
@@ -246,7 +247,7 @@ def addpermissions(user, options, foldername):
     acl_table = foldername.mapiobj.OpenProperty(PR_ACL_TABLE, IID_IExchangeModifyTable, 0, 0)
     table = acl_table.GetTable(0)
     cols = table.QueryColumns(TBL_ALL_COLUMNS)
-    table.SetColumns(cols, 0)
+    table.SetColumns([PR_ENTRYID, PR_MEMBER_ID, CHANGE_PROP_TYPE(PR_MEMBER_NAME, PT_UNICODE), PR_MEMBER_RIGHTS], TBL_BATCH)
     acltable = table.QueryRows(-1, 0)
 
     newvalue = len(acltable) + 1
@@ -255,7 +256,7 @@ def addpermissions(user, options, foldername):
         ROW_ADD,
         [SPropValue(0x0FFF0102, binascii.unhexlify(adduser.userid)),
          SPropValue(0x66710014, newvalue),
-         SPropValue(0x6672001E, adduser.fullname),
+         SPropValue(0x6672001F, adduser.fullname),
          SPropValue(0x66730003, permission)])]
 
     acl_table.ModifyTable(0, rowlist)
