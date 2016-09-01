@@ -8,6 +8,7 @@ from MAPI.Util import *
 import sys
 import binascii
 from terminaltables import AsciiTable
+from unidecode import unidecode
 
 ecRightsNone = 0x00000000
 ecRightsReadAny = 0x00000001
@@ -78,12 +79,68 @@ def getpermissions(folder, customname=None):
     return perfolder
 
 
+def getdelegateuser(user):
+    inbox = user.store.inbox
+
+    names = {}
+    names['users'] = {}
+
+    freebusyprops = inbox.mapiobj.GetProps([PR_FREEBUSY_ENTRYIDS], 0)
+    fbmsg = user.store.mapiobj.OpenEntry(freebusyprops[0].Value[1], None, MAPI_MODIFY)
+    fbProps = fbmsg.GetProps(
+        [PR_SCHDINFO_DELEGATE_ENTRYIDS, CHANGE_PROP_TYPE(PR_SCHDINFO_DELEGATE_NAMES, PT_MV_UNICODE), PR_DELEGATE_FLAGS],
+        0)
+
+    if fbProps[0].ulPropTag == PR_SCHDINFO_DELEGATE_ENTRYIDS:
+        for i in range(0, len(fbProps[0].Value)):
+            try:
+                names['users'][unidecode(fbProps[1].Value[i])]
+            except:
+                names['users'][unidecode(fbProps[1].Value[i])] = {}
+                names['users'][unidecode(fbProps[1].Value[i])]['private'] = bool(fbProps[2].Value[i])
+
+    for rule in inbox.rules():
+        if rule.name == 'Delegate Meetingrequest service':
+            for dellist in rule.mapirow[1719664894].lpAction[0].actobj.lpadrlist:
+                for prop in dellist:
+                    if prop.ulPropTag == 268370178:
+                        entryid = prop.ulPropTag
+                    if prop.ulPropTag == 805371935:
+                        try:
+                            names['users'][unidecode(prop.Value)]
+                        except:
+                            names['users'][unidecode(prop.Value)] = {}
+
+                        names['users'][unidecode(prop.Value)]['delegate'] = True
+
+    return names
+
 def listpermissions(user, options):
-    table_data = [["Folder", "Fullcontroll", "Owner", "Secretary", "Readonly", "No rights", "Other"]]
+    tabledelagate_data = [["username","See private items", "Send copy"]]
+    #delegate info
+    delnames =getdelegateuser(user)
+
+    for deluser in delnames['users']:
+        try:
+            if delnames['users'][deluser]['delegate']:
+                delegate = True
+        except:
+            delegate = False
+
+        if delnames['users'][deluser]['private']:
+            private = True
+        else:
+            private = False
+
+        if delegate or private:
+            tabledelagate_data.append([deluser, private, delegate])
+
+    #acl rules
+    tableacl_data = [["Folder", "Fullcontroll", "Owner", "Secretary", "Readonly", "No rights", "Other"]]
     store = user.store
     if not options.folders:
         perfolder = getpermissions(store)
-        table_data.append(['Store', '\n'.join(perfolder['Full control']), '\n'.join(perfolder['Owner']),
+        tableacl_data.append(['Store', '\n'.join(perfolder['Full control']), '\n'.join(perfolder['Owner']),
                            '\n'.join(perfolder['Secretary']),
                            '\n'.join(perfolder['Readonly']), '\n'.join(perfolder['No rights']),
                            '\n'.join(perfolder['Other'])])
@@ -94,16 +151,19 @@ def listpermissions(user, options):
         for i in xrange(0, len(folder.path.split('/')) - 1):
             folderindent += '-'
         foldername = '%s %s ' % (folderindent, folder.name)
-        table_data.append([foldername, '\n'.join(perfolder['Full control']), '\n'.join(perfolder['Owner']),
+        tableacl_data.append([foldername, '\n'.join(perfolder['Full control']), '\n'.join(perfolder['Owner']),
                            '\n'.join(perfolder['Secretary']),
                            '\n'.join(perfolder['Readonly']), '\n'.join(perfolder['No rights']),
                            '\n'.join(perfolder['Other'])])
 
-    table = AsciiTable(table_data)
-
+    acltable = AsciiTable(tableacl_data)
     print 'Store information %s ' % user.name
+    if  len(tabledelagate_data) > 1:
+        delegatetable = AsciiTable(tabledelagate_data)
+        print delegatetable.table
+
     print 'Folder permissions:'
-    print table.table
+    print acltable.table
 
 
 def calculatepermissions():
@@ -233,7 +293,6 @@ def main():
                 addpermissions(user, options, folder)
         else:
             addpermissions(user, options, user.store)
-
 
 if __name__ == "__main__":
     main()
