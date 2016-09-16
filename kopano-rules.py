@@ -319,7 +319,7 @@ def convertaction(action, user,server):
                     foldername = user.store.folder(entryid=folderid).name
                 except TypeError:
                     foldername = user.store.folder(folderid).name
-            except kopano.kopanoNotFoundException:
+            except kopano.NotFoundError:
                 mapistore = server.mapisession.OpenMsgStore(0, storeid, IID_IMsgStore, MDB_WRITE)
                 newstore = kopano.Store(mapiobj=mapistore, server=server)
                 try:
@@ -609,7 +609,7 @@ def createrule(options, lastid):
             if not action_rule == 'delete':
                 try:
                     user = server.user(action_var[1])
-                except kopano.kopanoNotFoundException:
+                except kopano.NotFoundError:
                     print "user '%s' not found" % action_var[1]
                     sys.exit()
                 except IndexError:
@@ -624,7 +624,7 @@ def createrule(options, lastid):
                         else:
                             getfolder = getfolder.folder(searchfolder)
                         num += 1
-                    except kopano.kopanoNotFoundException:
+                    except kopano.NotFoundError:
                         print "Folder '%s' does not exist" % searchfolder
                         sys.exit()
             else:
