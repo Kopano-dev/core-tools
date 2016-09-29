@@ -123,16 +123,16 @@ def main():
         ou['ou'] = orgunit
         json_data = json.dumps(ou)
         add_entry(option, json_data)
+    result = searchldap(option, 'ou=%s,%s' % (orgunit, option.basedn), "(uidNumber=*)", None)
+    try:
+        lastuid = int(result[-1]['uidNumber'][0])
+
+    except IndexError as e:
+        if e.message == 'list index out of range':
+            lastuid = 1000
 
     for number in range(option.totalcontacts):
-        result = searchldap(option, 'ou=%s,%s' % (orgunit, option.basedn), "(uidNumber=*)", None)
-
-        try:
-            lastuid = result[-1]['uidNumber'][0]
-        except IndexError as e:
-            if e.message == 'list index out of range':
-                lastuid = 1000
-
+        lastuid += 1
         fake = Factory.create('en_US')
         firstname = fake.first_name()
         lastname = fake.last_name()
