@@ -63,13 +63,16 @@ def main():
                 break
     else:
         for contact in user.store.contacts:
-            if contact.prop(0X8133001F).value:
-                if str(contact.prop(0X8133001F).value) not in str(history['recipients']):
-                    email = contact.prop(0X8133001F).value
-                    history['recipients'].append({"display_name":contact.prop(0X8130001F).value,
-                                 "smtp_address": "",
-                                 "email_address":email,"address_type":"ZARAFA","count":1,
-                                 "object_type":6})
+            try:
+                email = contact.prop(0X8133001F).value
+                if str(email) not in str(history['recipients']):
+                    history['recipients'].append({"display_name": contact.prop(0X8130001F).value,
+                                                  "smtp_address": "",
+                                                  "email_address": email, "address_type": "ZARAFA", "count": 1,
+                                                  "object_type": 6})
+            except MAPIErrorNotFound:
+                continue
+
 
     user.store.mapiobj.SetProps([SPropValue(0X6773001F, u'%s' % json.dumps(history))])
     user.store.mapiobj.SaveChanges(KEEP_OPEN_READWRITE)
