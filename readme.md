@@ -2,7 +2,7 @@ localize-folders
 ================
 
 
-The following scripts allow you to rename the systemfolders to a other language. 
+The following script allow you to rename the systemfolders to a other language. 
 
 
 
