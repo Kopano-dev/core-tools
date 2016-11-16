@@ -2,7 +2,7 @@ localize-folders
 ================
 
 
-The following scripts allow you to automatically delete all items older than x days in a users **Junk E-mail** and **Deleted Items** folder.
+The following scripts allow you to rename the systemfolders to a other language. 
 
 
 
