@@ -1,3 +1,26 @@
+localize-folders
+================
+
+
+The following scripts allow you to automatically delete all items older than x days in a users **Junk E-mail** and **Deleted Items** folder.
+
+
+
+## Usage
+
+For all users:
+```python
+python localize-folders.py --lang <eg nl_NL.UTF-8>
+```
+  
+For a single user:
+```python
+python localize-folders.py --user <username> --lang <eg nl_NL.UTF-8>
+```
+Switch back to english:
+```python
+python localize-folders.py --reset
+```
 kopano-cleanup
 ==============
 
@@ -8,9 +31,9 @@ The following scripts allow you to automatically delete all items older than x d
 
 ## Usage
 
-
-  python cleanup.py --user \<user\> --junk --wastebasket --days \<days\>
-
+```python
+python cleanup.py --user \<user\> --junk --wastebasket --days \<days\>
+```
 
 kopano-rules
 ============
