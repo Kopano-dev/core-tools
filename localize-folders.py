@@ -20,7 +20,7 @@ def opt_args():
 
 
 def translate(lang, reset):
-    if reset:
+    if reset or 'en_gb' in lang.lower():
         trans = {"sentmail": "Sent Items",
                  "outbox": "Outbox",
                  "wastebasket": "Deleted Items",
@@ -76,7 +76,11 @@ def main():
     trans = translate(options.lang, options.reset)
     for user in kopano.Server(options).users(options.users):
         print user.name
-        print '%s: Changing localized folder names to \"%s\"' % (user.name, options.lang)
+        if options.reset:
+            print '%s: Changing localized folder names to \"en_GB.UTF-8\"' % (user.name)
+        else:
+            print '%s: Changing localized folder names to \"%s\"' % (user.name, options.lang)
+
 
         if options.verbose:
             print 'Running in verbose mode'
