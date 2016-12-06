@@ -28,6 +28,7 @@ def searchemail(displayname):
 
     return False
 
+
 def main():
     options, args = opt_args()
 
@@ -38,29 +39,35 @@ def main():
         num = 0
         today = datetime.datetime.now()
         for item in user.store.sentmail:
-            email = searchemail(item.prop(PR_DISPLAY_TO_W).value)
-            if email:
-                email = email.replace('<', '').replace('>', '').replace('(', '').replace(')', '')
-                if email not in str(history['recipients']):
-                    if options.days:
-                        until = today + datetime.timedelta(days=int(options.days))
-                        messagedate = item.prop(PR_MESSAGE_DELIVERY_TIME).value
-                        if messagedate > until:
-                            continue
+            emails = item.prop(PR_DISPLAY_TO_W).value.split(';')
+            names = item.prop(PR_DISPLAY_TO_W).value.split(';')
+            add =0
+            for address in emails:
 
-                    if len(item.prop(PR_DISPLAY_TO_W).value) > 0:
-                        addresstype = 'ZARAFA'
-                    else:
-                        addresstype= 'SMTP'
+                email = searchemail(address)
+                if email:
+                    email = email.replace('<', '').replace('>', '').replace('(', '').replace(')', '')
+                    if email not in str(history['recipients']):
+                        if options.days:
+                            until = today + datetime.timedelta(days=int(options.days))
+                            messagedate = item.prop(PR_MESSAGE_DELIVERY_TIME).value
+                            if messagedate > until:
+                                continue
 
-                    history['recipients'].append({"display_name": item.prop(PR_DISPLAY_TO_W).value,
-                                                  "smtp_address": email,
-                                                  "email_address": email, "address_type": addresstype, "count": 1,
-                                                  "object_type": 6})
+                        if len(item.prop(PR_DISPLAY_TO_W).value) > 0:
+                            addresstype = 'ZARAFA'
+                        else:
+                            addresstype= 'SMTP'
 
-            num += 1
-            if options.total and num == int(options.total):
-                break
+                        history['recipients'].append({"display_name": names[add].lstrip(),
+                                                      "smtp_address": email.lstrip(),
+                                                      "email_address": email.lstrip(), "address_type": addresstype, "count": 1,
+                                                      "object_type": 6})
+
+                num += 1
+                add += 1
+                if options.total and num == int(options.total):
+                    break
     else:
         for contact in user.store.contacts:
             try:
