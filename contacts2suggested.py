@@ -46,7 +46,7 @@ def main():
 
                 email = searchemail(address)
                 if email:
-                    email = email.replace('<', '').replace('>', '').replace('(', '').replace(')', '')
+                    email = email.replace('<', '').replace('>', '').replace('(', '').replace(')', '').replace("'", '').replace('"', '')
                     if email not in str(history['recipients']):
                         if options.days:
                             until = today + datetime.timedelta(days=int(options.days))
@@ -59,7 +59,7 @@ def main():
                         else:
                             addresstype= 'SMTP'
 
-                        history['recipients'].append({"display_name": names[add].lstrip(),
+                        history['recipients'].append({"display_name": names[add].lstrip().replace("'", ''),
                                                       "smtp_address": email.lstrip(),
                                                       "email_address": email.lstrip(), "address_type": addresstype, "count": 1,
                                                       "object_type": 6})
