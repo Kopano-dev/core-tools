@@ -6,6 +6,7 @@ import kopano
 import sys
 import csv
 from MAPI.Util import *
+import MAPI.Util
 import MAPI.Time
 import time
 import pickle
@@ -45,7 +46,6 @@ def opt_args():
     parser.add_option("--purge", dest="purge", action="store_true", help="Purge contacts before the import")
     parser.add_option("--progressbar", dest="progressbar", action="store_true", help="Show progressbar ")
 
-
     return parser.parse_args()
 
 
@@ -67,60 +67,15 @@ def progressbar(count):
 
 
 def getprop(item, myprop):
+
     try:
-        return item.prop(myprop).value
-    except:
+        if item.prop(myprop).typename == 'PT_UNICODE':
+            return item.prop(myprop).value.encode('utf-8')
+        if item.prop(myprop).typename == 'PT_SYSTIME':
+            epoch = datetime.utcfromtimestamp(0)
+            return (item.prop(myprop).value - epoch).total_seconds()
+    except MAPIErrorNotFound:
         return None
-
-
-def checktype(type):
-    if type == 'PT_I4' or type == 'PT_LONG':
-        type = 3
-    if type == 'PT_BINARY':
-        type = 258
-    if type == 'PT_BOOLEAN':
-        type = 11
-    if type == 'PT_TSTRING' or type == 'PT_STRING8':
-        type = 30
-    if type == 'PT_UNICODE':
-        type = 31
-    if type == 'PT_SYSTIME':
-        type = 64
-
-    return type
-
-
-def checkTags(proptag=None, propname=None, value=None):
-    with open('%s/Tags' % scriptdir, 'rb') as handle:
-        tags = pickle.load(handle)
-    type = None
-    for tag in tags:
-        if propname == tag['PR']:
-            proptag = tag['HEX']
-            type = tag['PT']
-            propname = tag['PR']
-    try:
-        name = PROP_TAG(checktype(type), int(proptag, 16))
-    except:
-        name = None
-
-    if type:
-        if type == 'PT_I4' or type == 'PT_LONG':
-            try:
-                value = int(value)
-            except ValueError as e:
-                value = 0
-        if type == 'PT_BINARY':
-            value = binascii.hexlify(value)
-        if type == 'PT_BOOLEAN':
-            if value.lower() == 'true':
-                value = True
-            else:
-                value = False
-        if type == 'PT_SYSTIME':
-            value = MAPI.Time.unixtime(time.mktime(datetime.strptime(value, '%Y-%m-%d 00:00:00').timetuple()))
-
-    return value, name
 
 
 def main():
@@ -205,6 +160,7 @@ def main():
                      'PR_DISPLAY_NAME_FULL', 'PR_EMAIL', 'PR_FILE_AS', 'PR_WEBSITE', 'PR_MAIL',
                      'PR_DISPLAY_NAME_FULL2', 'PR_EMAIL2','PR_MAIL2','PR_DISPLAY_NAME_FULL3', 'PR_EMAIL3','PR_MAIL3',
                      'PR_ADDRESS', 'PR_CITY', 'PR_STATE', 'PR_ZIP', 'PR_COUNTRY', 'PR_IM', 'PR_BODY'])
+        print contactsarray
         for contact in contactsarray:
             if options.progressbar:
                 pbar.update(itemcount + 1)
@@ -234,11 +190,16 @@ def main():
                 new_item = contacts.create_item()
                 for num in range(0, total, 1):
                     if contact[num]:
-                        fixvalue, name = checkTags(propname=headers[num], value=contact[num])
-                        if str(headers[num]) in extra:
-                            new_item.mapiobj.SetProps([SPropValue(extra[headers[num]], u'%s' % fixvalue)])
+                        if headers[num] == 'PR_WEDDING_ANNIVERSARY' or headers[num] == 'PR_BIRTHDAY':
+                            datetime_date = datetime.fromtimestamp(int(contact[num][:-2]))
+                            value = MAPI.Time.unixtime(time.mktime(datetime_date.timetuple()))
                         else:
-                            new_item.mapiobj.SetProps([SPropValue(name, fixvalue)])
+                            value = contact[num].decode('utf-8').replace(u'\xa0', u' ')
+
+                        if str(headers[num]) in extra:
+                            new_item.mapiobj.SetProps([SPropValue(extra[headers[num]], value)])
+                        else:
+                            new_item.mapiobj.SetProps([SPropValue(getattr(MAPI.Util,headers[num]), value)])
                         new_item.mapiobj.SaveChanges(KEEP_OPEN_READWRITE)
                 try:
                     address = '%s\n%s\n%s\n%s\n' % (
@@ -248,7 +209,6 @@ def main():
                     new_item.mapiobj.SaveChanges(KEEP_OPEN_READWRITE)
                 except:
                     continue
-
                 itemcount += 1
         if options.progressbar:
             pbar.finish()
