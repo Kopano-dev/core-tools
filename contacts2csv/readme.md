@@ -55,7 +55,7 @@ With progessbar
 
 \*\* is optional(will remove all contact before starting the import)
 
-[quote]
+
 #Notice
+
 PR_WEDDING_ANNIVERSARY and PR_BIRTHDAY need to be converted to Epoch timestamp.
-[/quote]
