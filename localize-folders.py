@@ -98,7 +98,11 @@ def main():
             if options.verbose or options.dryrun:
                 print 'Changing MAPI "%s" -> Renaming "%s" to "%s"' % (mapifolder, folderobject.name, localizedname)
             if not options.dryrun:
-                folderobject.prop(PR_DISPLAY_NAME).set_value(localizedname)
+                try:
+                    folderobject.prop(PR_DISPLAY_NAME).set_value(localizedname)
+                except MAPI.Struct.MAPIErrorCollision:
+                    print '%s is already being used' % localizedname
+                    sys.exit(1)
 
 
 if __name__ == "__main__":
