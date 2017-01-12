@@ -2,10 +2,11 @@
 # -*- coding: utf-8 -*-
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
 #
-import kopano
-from MAPI.Util import *
-import locale
 import gettext
+import kopano
+import locale
+import sys
+from MAPI.Util import *
 
 
 def opt_args():
@@ -27,10 +28,12 @@ def translate(lang, reset):
                  "inbox": "Inbox",
                  "calendar": "Calendar",
                  "contacts": "Contacts",
+                 "suggested_contacts": "Suggested Contacts",
                  "drafts": "Drafts",
                  "journal": "Journal",
                  "notes": "Notes",
                  "tasks": "Tasks",
+                 "rss": "RSS Feeds",
                  "junk": "Junk E-mail"}
     else:
         try:
@@ -58,10 +61,12 @@ def translate(lang, reset):
                  "inbox": _("Inbox"),
                  "calendar": _("Calendar"),
                  "contacts": _("Contacts"),
+                 "suggested_contacts": _("Suggested Contacts"),
                  "drafts": _("Drafts"),
                  "journal": _("Journal"),
                  "notes": _("Notes"),
                  "tasks": _("Tasks"),
+                 "rss": _("RSS Feeds"),
                  "junk": _("Junk E-mail")}
     return trans
 
@@ -77,10 +82,9 @@ def main():
     for user in kopano.Server(options).users(options.users):
         print user.name
         if options.reset:
-            print '%s: Changing localized folder names to \"en_GB.UTF-8\"' % (user.name)
+            print '%s: Changing localized folder names to \"en_GB.UTF-8\"' % user.name
         else:
             print '%s: Changing localized folder names to \"%s\"' % (user.name, options.lang)
-
 
         if options.verbose:
             print 'Running in verbose mode'
