@@ -133,10 +133,9 @@ def main():
 
     for number in range(option.totalcontacts):
         lastuid += 1
-        fake = Factory.create('en_US')
+        fake = Factory.create('nl_NL')
         firstname = fake.first_name()
         lastname = fake.last_name()
-
         uid = '%s %s' % (firstname, lastname)
         user = {}
         user['dn'] = 'uid=%s,ou=%s,%s' % (uid, orgunit, option.basedn)
@@ -147,6 +146,10 @@ def main():
         user['uidNumber'] = str(int(lastuid) + 1)
         user['givenName'] = firstname
         user['sn'] = lastname
+        user['homePhone'] = fake.phone_number()
+        user['mobile'] = fake.phone_number()
+        user['physicalDeliveryOfficeName'] = str(fake.company())
+        user['homePostalAddress'] = fake.address()
 
         json_data = json.dumps(user)
 

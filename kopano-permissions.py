@@ -8,7 +8,6 @@ from MAPI.Util import *
 import sys
 import binascii
 from terminaltables import AsciiTable
-from unidecode import unidecode
 
 ecRightsNone = 0x00000000
 ecRightsReadAny = 0x00000001
@@ -157,10 +156,12 @@ def listpermissions(user, options):
                            '\n'.join(perfolder['Readonly']), '\n'.join(perfolder['No rights']),
                            '\n'.join(perfolder['Other'])])
 
+
     acltable = AsciiTable(tableacl_data)
     print 'Store information %s ' % user.name
     if  len(tabledelagate_data) > 1:
         delegatetable = AsciiTable(tabledelagate_data)
+        print 'Delegate information:'
         print delegatetable.table
 
     print 'Folder permissions:'
