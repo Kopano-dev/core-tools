@@ -9,6 +9,7 @@ import kopano
 from MAPI.Util import *
 
 
+
 def opt_args():
     parser = kopano.parser('skpcfm')
     parser.add_option("--user", dest="user", action="store", help="Run script for user")
