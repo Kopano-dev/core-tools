@@ -32,7 +32,7 @@ def main():
         for folder in store.folders():
             if folder.container_class == '':
                 if options.list:
-                    storefolders.append(folder.name)
+                    storefolders.append({'name':folder.name, 'entryid': folder.entryid})
 
                 if options.mail:
                     folder.container_class = 'IPF.Note'
@@ -52,8 +52,9 @@ def main():
         if options.list:
             if len(storefolders) > 0:
                 print 'Following folders are broken:'
+                print '{:50} {:5}'.format('Folder name', 'Entryid')
                 for folder in storefolders:
-                    print folder
+                    print '{:50} {:5}'.format(folder['name'], folder['entryid'])
             else:
                 print 'No broken folders found'
 
