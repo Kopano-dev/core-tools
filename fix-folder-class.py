@@ -9,7 +9,7 @@ except ImportError:
     import zarafa as kopano
 import itertools
 import json
-
+import os
 
 def opt_args():
     parser = kopano.parser('skpcuf')
@@ -34,14 +34,19 @@ def main():
         print user.name
 
         if options.restore:
-            with open('%s.json' % user.name) as json_data:
-                data = json.load(json_data)
-                for restorefolder in data:
-                    if restorefolder['folder-type']:
-                        folder = user.store.folder(entryid=restorefolder['entryid'])
-                        folder.container_class = 'IPF.%s' % restorefolder['folder-type']
-                        print 'Changed %s folder-type to IPF.%s ' % (
-                        folder.name.encode('utf-8'), restorefolder['folder-type'])
+            if os.path.isfile('%s.json' % user.name):
+                with open('%s.json' % user.name) as json_data:
+                    data = json.load(json_data)
+                    for restorefolder in data:
+                        if restorefolder['folder-type']:
+                            folder = user.store.folder(entryid=restorefolder['entryid'])
+                            folder.container_class = 'IPF.%s' % restorefolder['folder-type']
+                            try:
+                                print 'Changed %s folder-type to IPF.%s ' % (
+                                folder.name.encode('utf-8'), restorefolder['folder-type'])
+                            except Exception as e:
+                                print 'Changed %s folder-type to IPF.%s ' % (
+                                    folder.name,  restorefolder['folder-type'])
 
         for folder in store.folders():
             if not folder.container_class:
