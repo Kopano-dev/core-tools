@@ -9,11 +9,12 @@ except ImportError:
     import zarafa as kopano
 from MAPI.Util import *
 import itertools
-
+import json
 
 def opt_args():
     parser = kopano.parser('skpcuf')
     parser.add_option("--list", dest="list", action="store_true", help="List all folders that is missing the PR_CONTAINER_CLASS property")
+    parser.add_option("--restore", dest="restore", action="store_true", help="Restore the json file")
     parser.add_option("--auto", dest="auto", action="store_true", help="Try to auto fix the PR_CONTAINER_CLASS")
     parser.add_option("--mail", dest="mail", action="store_true", help="Change all the missing PR_CONTAINER_CLASS property to IPF.Note(mail folder) ")
 
@@ -28,6 +29,16 @@ def main():
         if not store:
             continue
         print user.name
+
+        if options.restore:
+            with open('%s.json' % user.name) as json_data:
+                data = json.load(json_data)
+                for restorefolder in data:
+                    if restorefolder['folder-type']:
+                        folder = user.store.folder(entryid=restorefolder['entryid'])
+                        folder.container_class = 'IPF.%s' % restorefolder['folder-type']
+                        print 'Changed %s folder-type to IPF.%s ' % (
+                        folder.name.encode('utf-8'), restorefolder['folder-type'])
 
         for folder in store.folders():
             if folder.container_class == '':
@@ -51,12 +62,15 @@ def main():
 
         if options.list:
             if len(storefolders) > 0:
+                with open('%s.json' % user.name, 'w') as outfile:
+                        json.dump(storefolders,  outfile, indent=4)
                 print 'Following folders are broken:'
                 print '{:50} {:5}'.format('Folder name', 'Entryid')
                 for folder in storefolders:
-                    print '{:50} {:5}'.format(folder['name'], folder['entryid'])
+                    print '{:50} {:5}'.format(folder['name'].encode('utf8'), folder['entryid'])
             else:
                 print 'No broken folders found'
+
 
 if __name__ == "__main__":
     main()
