@@ -32,17 +32,22 @@ Fixes the folder that are missing the container_class property
 
 options
 * --list
-... list all the folders that are missing the container_class property. A json file is saved so the user can manually fix these fodlers
+
+    list all the folders that are missing the container_class property. A json file is saved so the user can manually fix these fodlers
 * --restore
-... uses the json file that is created with the --list options to manually fix the folder
-... the following folder type's can be used:
-    ⋅⋅* Note  (Mail folder)
-    ..* Appointment (Calendar folder)
-    ..* Stickynote (Notes folder)
-    ..* Contact  (contacts folder)
-    ..* Tasks    (task folder)
+
+    uses the json file that is created with the --list options to manually fix the folder
+    the following folder type's can be used:
+    
+    * Note  (Mail folder)
+    * Appointment (Calendar folder)
+    * Stickynote (Notes folder)
+    * Contact  (contacts folder)
+    * Tasks    (task folder)
 * --auto
-... Tries to guess the folder type's and if possible fix the folder. 
-... It will create a json file if folders can't be fix, the --restore option can be used then 
+
+    Tries to guess the folder type's and if possible fix the folder. 
+    It will create a json file if folders can't be fix, the --restore option can be used then 
 * --mail 
-... Will fix all the broken folder to mail folders
+
+    Will fix all the broken folder to mail folders
