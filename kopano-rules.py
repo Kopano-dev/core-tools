@@ -718,7 +718,7 @@ def createrule(options, lastid):
         if exception_rule == 'contain-word-sender-address' or exception_rule == 'contain-word-in-subject' or exception_rule == 'contain-word-in-body':
             for word in exception_var:
                 if condition_rule == 'contain-word-sender-address':
-                    exceptionslist.append(SContentRestriction(1, 0xc1d0102, SPropValue(0x0C1D0102, word.decode('utf8'))))
+                    exceptionslist.append(SContentRestriction(1, 0xc1d0102, SPropValue(0x0C1D0102, word.decode('utf8').encode('ISO-8859-1'))))
                 if condition_rule == 'contain-word-in-subject':
                     exceptionslist.append(SContentRestriction(65537, 0x37001f, SPropValue(0x0037001F, word.decode('utf8'))))
                 if condition_rule == 'contain-word-in-body':
