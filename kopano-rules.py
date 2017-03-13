@@ -370,24 +370,18 @@ def printrules(filters, user, server):
 
     table_data = [["Number", "Name", "Condition", "Action", "State"]]
     for rule in filters:
-        condition_message = ''
-        # if isinstance(rule[4].Value, SAndRestriction):
-        #     countcon = len(rule[4].Value.lpRes)
-        #     num = 0
-        #     for con in rule[4].Value.lpRes:
-        #         tmpmessage = convertcondition(con)
-        #         if len(tmpmessage) > 0:
-        #             condition_message += tmpmessage
-        #             num += 1
-        #             if num != countcon and countcon != 1:
-        #                 condition_message += "\n"
-        # else:
+
         condition_message = convertcondition(rule[4].Value)
 
         actions = convertaction(rule[5], user,server)
+        name = rule[7].Value
+        if not isinstance(condition_message, unicode):
+            condition = unicode(condition_message, encoding='ISO-8859-1')
+        else:
+            condition = condition_message
         table_data.append(
-            [str(rule[0].Value), str(rule[7].Value), str(condition_message), str(actions),
-             str(rulestate[rule[2].Value])])
+            [rule[0].Value, name, condition, unicode(actions),
+             unicode(rulestate[rule[2].Value])])
 
     table = AsciiTable(table_data)
     print table.table
@@ -503,11 +497,11 @@ def createrule(options, lastid):
         if condition_rule == 'contain-word-sender-address' or condition_rule == 'contain-word-in-subject' or condition_rule == 'contain-word-in-body':
             for word in condition_var:
                 if condition_rule == 'contain-word-sender-address':
-                    conditionslist.append(SContentRestriction(1, 0xc1d0102, SPropValue(0x0C1D0102, u'%s' % word)))
+                    conditionslist.append(SContentRestriction(1, 0xc1d0102, SPropValue(0x0C1D0102, word.decode('utf8').encode('ISO-8859-1'))))
                 if condition_rule == 'contain-word-in-subject':
-                    conditionslist.append(SContentRestriction(65537, 0x37001f, SPropValue(0x0037001F, u'%s' % word)))
+                    conditionslist.append(SContentRestriction(65537, 0x37001f, SPropValue(0x0037001F, word.decode('utf8'))))
                 if condition_rule == 'contain-word-in-body':
-                    conditionslist.append(SContentRestriction(65537, 0x1000001f, SPropValue(0x1000001F, u'%s' % word)))
+                    conditionslist.append(SContentRestriction(65537, 0x1000001f, SPropValue(0x1000001F, word.decode('utf8'))))
             if len(conditionslist) > 1:
                 storeconditions.append(SOrRestriction(conditionslist))
             else:
@@ -576,8 +570,6 @@ def createrule(options, lastid):
                     entryid = username.userid
                     protocol = u'kopano'
                 else:
-                    #print 'Sorry outgoing actions are not possible right now'
-                    #sys.exit(1)
                     tomail = 'SMTP:%s' % user.upper()
                     fullname = user
                     name = user
@@ -726,11 +718,11 @@ def createrule(options, lastid):
         if exception_rule == 'contain-word-sender-address' or exception_rule == 'contain-word-in-subject' or exception_rule == 'contain-word-in-body':
             for word in exception_var:
                 if condition_rule == 'contain-word-sender-address':
-                    exceptionslist.append(SContentRestriction(1, 0xc1d0102, SPropValue(0x0C1D0102, u'%s' % word)))
+                    exceptionslist.append(SContentRestriction(1, 0xc1d0102, SPropValue(0x0C1D0102, word.decode('utf8'))))
                 if condition_rule == 'contain-word-in-subject':
-                    exceptionslist.append(SContentRestriction(65537, 0x37001f, SPropValue(0x0037001F, u'%s' % word)))
+                    exceptionslist.append(SContentRestriction(65537, 0x37001f, SPropValue(0x0037001F, word.decode('utf8'))))
                 if condition_rule == 'contain-word-in-body':
-                    exceptionslist.append(SContentRestriction(65537, 0x1000001f, SPropValue(0x1000001F, u'%s' % word)))
+                    exceptionslist.append(SContentRestriction(65537, 0x1000001f, SPropValue(0x1000001F, word.decode('utf8'))))
             if len(exceptionslist) > 1:
                 storeexceptions.append(SNotRestriction(SOrRestriction(exceptionslist)))
             else:
