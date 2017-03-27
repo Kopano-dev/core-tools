@@ -2,7 +2,7 @@ localize-folders
 ================
 
 
-The following script allow you to rename the systemfolders to a other language. 
+The following script allow you to rename the systemfolders to an other language. 
 
 
 
@@ -34,6 +34,19 @@ The following scripts allow you to automatically delete all items older than x d
 ```python
 python cleanup.py --user \<user\> --junk --wastebasket --days \<days\>
 ```
+
+recreate-systemfolders
+======================
+
+Script that can recreate system folder*
+
+## Usage
+```python
+python recreate-systemfolders --user \<user\> --create <foldername> --systemfolder <systemfoldername**>
+```
+
+\* Inbox folder  can't be recreated. 
+\*\* Following systemfolders are available  calendar, contacts, drafts, journal, notes, outbox, sentmail, task, wastebasket
 
 kopano-rules
 ============
@@ -148,3 +161,5 @@ Multiple conditions,  actions  and exceptions must we seperated with ;
 * message-size and name-in-to  are not working at the moment
 * list issues with name-in-cc and  name-in-to
 * sensitivity  'normal' is not selectable in webapp
+
+
