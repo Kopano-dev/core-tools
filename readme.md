@@ -1,3 +1,21 @@
+delete-items
+============
+
+Delete items  between  given dates.
+
+## Usage:
+```python
+python localize-folders.py -u <username> --from  YYYY-MM-DD --until YYYY-MM-DD 
+```
+
+```python
+python localize-folders.py -u <username> --from YYYY-MM-DD  
+```
+
+```python
+python localize-folders.py -u <username> --until YYYY-MM-DD 
+```
+
 localize-folders
 ================
 
