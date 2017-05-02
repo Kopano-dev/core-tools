@@ -2,7 +2,11 @@
 # -*- coding: utf-8 -*-
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
 #
-import kopano
+try:
+    import kopano
+except ImportError:
+    import zarafa as kopano
+    print 'Script is tested with Kopano, error handling will not work with Zarafa'
 import sys
 from MAPI.Util import *
 from datetime import datetime
@@ -48,7 +52,7 @@ def main():
                     received_date = item.created
                 else:
                     received_date = item.received
-                print item
+
                 if received_date >= from_date and received_date <= until_date:
                     item_delete += 1
                     if options.dry_run:
