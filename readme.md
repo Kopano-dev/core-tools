@@ -15,6 +15,10 @@ python localize-folders.py -u <username> --from YYYY-MM-DD
 ```python
 python localize-folders.py -u <username> --until YYYY-MM-DD 
 ```
+Run for specific folder
+```python
+python localize-folders.py -u <username> --from  YYYY-MM-DD --until YYYY-MM-DD  -f <folder name>
+```
 Dry run mode
 ```python
 python localize-folders.py -u <username> --from  YYYY-MM-DD --until YYYY-MM-DD  --dry-run 
