@@ -29,9 +29,14 @@ def opt_args():
 def fix_folders(store, user, options):
 
     storefolders = []
+    if options.public:
+        username = 'Public'
+    else:
+        username = user.name
     if options.restore:
-        if os.path.isfile('%s.json' % user.name):
-            with open('%s.json' % user.name) as json_data:
+
+        if os.path.isfile('%s.json' % username):
+            with open('%s.json' % username) as json_data:
                 data = json.load(json_data)
                 for restorefolder in data:
                     if restorefolder['folder-type']:
@@ -68,9 +73,9 @@ def fix_folders(store, user, options):
 
     if options.list or len(storefolders) > 0:
         if len(storefolders) > 0:
-            with open('%s.json' % user.name, 'w') as outfile:
+            with open('%s.json' % username, 'w') as outfile:
                 json.dump(storefolders, outfile, indent=4)
-            print '%s.json created' % user.name
+            print '%s.json created' % username
             if options.list:
                 print 'Following folders are broken:'
             else:
