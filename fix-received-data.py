@@ -10,6 +10,7 @@ from dateutil.parser import parse
 
 def opt_args():
     parser = kopano.parser('skpcufm')
+    parser.add_option("--dry-run", dest="dryrun", action="store_true", help="run the script without executing any actions")
     return parser.parse_args()
 
 def main():
@@ -27,8 +28,9 @@ def main():
                 get_date = item.headers().get('date')
                 if get_date:
                     new_date = MAPI.Time.unixtime(mktime(parse(get_date).timetuple()))
-                    item.mapiobj.SetProps([SPropValue(PR_MESSAGE_DELIVERY_TIME, new_date)])
-                    item.mapiobj.SaveChanges(KEEP_OPEN_READWRITE)
+                    if not options.dryrun:
+                        item.mapiobj.SetProps([SPropValue(PR_MESSAGE_DELIVERY_TIME, new_date)])
+                        item.mapiobj.SaveChanges(KEEP_OPEN_READWRITE)
                     total_count += 1
                     folder_item_count += 1
             print 'Changed %s item(s) in folder \'%s\'' % (folder_item_count, folder.name)
