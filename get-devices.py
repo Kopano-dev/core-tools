@@ -51,10 +51,9 @@ def get_sessions(options, con):
                 client_app_version = prop.value
             if prop.idname == 'PR_EC_STATS_SESSION_CLIENT_APPLICATION_MISC':
                 client_name = prop.value
-
         con.execute('''INSERT into devices(date, ipaddress, name, client_version, client_app, client_app_version, client_name)
         SELECT '%s', '%s','%s','%s','%s','%s','%s'
-        WHERE NOT EXISTS(SELECT 1 FROM devices where date = '%s', ipaddress = '%s' AND name = '%s' AND client_app = '%s'
+        WHERE NOT EXISTS(SELECT 1 FROM devices where date = '%s' AND ipaddress = '%s' AND name = '%s' AND client_app = '%s'
         AND client_app_version = '%s' AND client_name = '%s')'''
                     % (current_date, ipaddress, name, client_version, client_app, client_app_version, client_name,
                        current_date, ipaddress, name, client_app, client_app_version, client_name))
