@@ -382,9 +382,12 @@ def printrules(filters, user, server):
             condition = unicode(condition_message, encoding='ISO-8859-1')
         else:
             condition = condition_message
-        table_data.append(
-            [rule[0].Value, name, condition, unicode(actions),
-             unicode(rulestate[rule[2].Value])])
+        try:
+            table_data.append(
+                [rule[0].Value, name, condition, unicode(actions),
+                unicode(rulestate[rule[2].Value])])
+        except KeyError:
+            continue
 
     table = AsciiTable(table_data)
     print table.table
