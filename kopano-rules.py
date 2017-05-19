@@ -2,8 +2,11 @@
 # -*- coding: utf-8 -*-
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
 #
-
-import kopano
+try:
+    import kopano
+except ImportError:
+    import zarafa as kopano
+    print 'Script is not tested with Zarafa \nError handling will not work correctly'
 from MAPI.Util import *
 import sys
 import binascii
@@ -84,7 +87,7 @@ def convertcondition(conditions):
                         if proptag == "0xc1d0102":
                             condition_message += "Is received from "
 
-                    condition_message += addresses.lpRes.lpProp.Value.replace('kopano:', '').lower()
+                    condition_message += addresses.lpRes.lpProp.Value.replace('ZARAFA:', '').lower()
 
                 if isinstance(addresses, SContentRestriction):
                     proptag = hex(addresses.ulPropTag)
@@ -223,7 +226,7 @@ def convertcondition(conditions):
             for cond in listconditions:
                 if isinstance(cond, SCommentRestriction):
                     content = cond.rt
-                    email = cond.lpRes.lpProp.Value.replace('kopano:', '').replace('SMTP:', '').lower()
+                    email = cond.lpRes.lpProp.Value.replace('ZARAFA:', '').replace('SMTP:', '').lower()
                     if content == 10:
                         if connum == 0:
                             condition_message += 'NOT received from: '
