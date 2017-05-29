@@ -153,8 +153,9 @@ Multiple conditions,  actions  and exceptions must we seperated with ;
 * contain-word-sender-address  **
 * contain-word-in-subject **
 * contain-word-in-body **
-* message-size  (size in kb)
-* received-date  (dd-mm-yyyy)
+* contain-word-in-header **
+* message-size (size in kb)
+* received-date (dd-mm-yyyy)
 * has-attachment
 
 ###### Actions:
@@ -200,5 +201,3 @@ Multiple conditions,  actions  and exceptions must we seperated with ;
 * message-size and name-in-to  are not working at the moment
 * list issues with name-in-cc and  name-in-to
 * sensitivity  'normal' is not selectable in webapp
-
-

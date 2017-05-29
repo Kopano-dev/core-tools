@@ -61,6 +61,7 @@ def convertcondition(conditions):
     conlist = []
     totalnum = 0
     messagelist = []
+
     try:
         conditions = conditions.lpRes
         totalconditions = len(conditions.lpRes)
@@ -94,11 +95,13 @@ def convertcondition(conditions):
                     if proptag not in conlist:
                         conlist.append(proptag)
                         if proptag == '0xc1d0102':
-                            condition_message += "Includes these words in the sender's address: "
+                            condition_message += "Includes these word(s) in the sender's address: "
                         if proptag == '0x37001f':
-                            condition_message += "Includes these words in the subject: "
+                            condition_message += "Includes these word(s) in the subject: "
                         if proptag == '0x1000001f':
-                            condition_message += "Includes these words in the body: "
+                            condition_message += "Includes these word(s) in the body: "
+                        if proptag == '0x7d001f':
+                            condition_message += "Includes these word(s) in the header: "
                     condition_message += addresses.lpProp.Value
 
                 numaddress += 1
@@ -113,11 +116,13 @@ def convertcondition(conditions):
                 conlist.append(SContentRestriction)
                 proptag = hex(condition.ulPropTag).lower()
                 if proptag == '0xc1d0102':
-                    condition_message += "Includes these words in the sender's address: "
+                    condition_message += "Includes these word(s) in the sender's address: "
                 if proptag == '0x37001f':
-                    condition_message += "Includes these words in the subject: "
+                    condition_message += "Includes these word(s) in the subject: "
                 if proptag == '0x1000001f':
-                    condition_message += "Includes these words in the body: "
+                    condition_message += "Includes these word(s) in the body: "
+                if proptag == '0x7d001f':
+                    condition_message += "Includes these word(s) in the header: "
             condition_message += "%s \n" % condition.lpProp.Value
 
 
@@ -312,7 +317,6 @@ def convertaction(action, user,server):
                 2: 'Copy',}
     countact = len(action.Value.lpAction)
     num = 0
-
     for act in action.Value.lpAction:
         if isinstance(act.actobj, actMoveCopy):
             folderid = binascii.hexlify(act.actobj.FldEntryId)
@@ -500,14 +504,22 @@ def createrule(options, lastid):
                                                     SPropertyRestriction(4, 0xe03001f, SPropValue(0x0E03001F, u''))])
                                    )
 
-        if condition_rule == 'contain-word-sender-address' or condition_rule == 'contain-word-in-subject' or condition_rule == 'contain-word-in-body':
+        if condition_rule == 'contain-word-sender-address' or condition_rule == 'contain-word-in-subject' \
+                or condition_rule == 'contain-word-in-body' or condition_rule == 'contain-word-in-header':
             for word in condition_var:
                 if condition_rule == 'contain-word-sender-address':
-                    conditionslist.append(SContentRestriction(1, 0xc1d0102, SPropValue(0x0C1D0102, word.decode('utf8').encode('ISO-8859-1'))))
+                    conditionslist.append(
+                        SContentRestriction(1, 0xc1d0102, SPropValue(0x0C1D0102, word.decode('utf8').encode('ISO-8859-1'))))
                 if condition_rule == 'contain-word-in-subject':
-                    conditionslist.append(SContentRestriction(65537, 0x37001f, SPropValue(0x0037001F, word.decode('utf8'))))
+                    conditionslist.append(
+                        SContentRestriction(65537, 0x37001f, SPropValue(0x0037001F, word.decode('utf8'))))
                 if condition_rule == 'contain-word-in-body':
-                    conditionslist.append(SContentRestriction(65537, 0x1000001f, SPropValue(0x1000001F, word.decode('utf8'))))
+                    conditionslist.append(
+                        SContentRestriction(65537, 0x1000001f, SPropValue(0x1000001F, word.decode('utf8'))))
+                if condition_rule == 'contain-word-in-header':
+                    conditionslist.append(
+                        SContentRestriction(65537, 0x7d001f, SPropValue(0x007D001F, word.decode('utf8'))))
+
             if len(conditionslist) > 1:
                 storeconditions.append(SOrRestriction(conditionslist))
             else:
@@ -721,7 +733,8 @@ def createrule(options, lastid):
             else:
                 storeexceptions.append(SNotRestriction(exceptionslist[0]))
 
-        if exception_rule == 'contain-word-sender-address' or exception_rule == 'contain-word-in-subject' or exception_rule == 'contain-word-in-body':
+        if exception_rule == 'contain-word-sender-address' or exception_rule == 'contain-word-in-subject' \
+            or exception_rule == 'contain-word-in-body' or exception_rule == 'contain-word-in-header':
             for word in exception_var:
                 if condition_rule == 'contain-word-sender-address':
                     exceptionslist.append(SContentRestriction(1, 0xc1d0102, SPropValue(0x0C1D0102, word.decode('utf8').encode('ISO-8859-1'))))
@@ -729,6 +742,9 @@ def createrule(options, lastid):
                     exceptionslist.append(SContentRestriction(65537, 0x37001f, SPropValue(0x0037001F, word.decode('utf8'))))
                 if condition_rule == 'contain-word-in-body':
                     exceptionslist.append(SContentRestriction(65537, 0x1000001f, SPropValue(0x1000001F, word.decode('utf8'))))
+                if condition_rule == 'contain-word-in-header':
+                        exceptionslist.append(SContentRestriction(65537, 0x7d001f , SPropValue(0x007D001F, word.decode('utf8'))))
+
             if len(exceptionslist) > 1:
                 storeexceptions.append(SNotRestriction(SOrRestriction(exceptionslist)))
             else:
