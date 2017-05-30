@@ -72,8 +72,6 @@ def convertcondition(conditions):
         except AttributeError:
             conditions = [conditions]
             totalconditions = len(conditions)
-
-
     for condition in conditions:
         connum = 0
         # SOrRestriction
@@ -102,7 +100,11 @@ def convertcondition(conditions):
                             condition_message += "Includes these word(s) in the body: "
                         if proptag == '0x7d001f':
                             condition_message += "Includes these word(s) in the header: "
-                    condition_message += addresses.lpProp.Value
+                        if proptag == '0x1a001f':
+                            condition_message += "Which is a meeting invitation or update"
+
+                    if proptag != '0x1a001f':
+                        condition_message += "%s \n" % condition.lpProp.Value
 
                 numaddress += 1
                 if numaddress != totaladdresses and totaladdresses != 1:
@@ -123,14 +125,18 @@ def convertcondition(conditions):
                     condition_message += "Includes these word(s) in the body: "
                 if proptag == '0x7d001f':
                     condition_message += "Includes these word(s) in the header: "
-            condition_message += "%s \n" % condition.lpProp.Value
+                if proptag == '0x1a001f':
+                    condition_message += "Which is a meeting invitation or update"
+            if proptag != '0x1a001f':
+                condition_message += "%s \n" % condition.lpProp.Value
+
 
 
         if isinstance(condition, SPropertyRestriction):
             proptag = hex(condition.ulPropTag)
             if proptag not in conlist:
                 conlist.append(proptag)
-                if proptag == '0x57000b' and condition.lpProp.Value :
+                if proptag == '0x57000b' and condition.lpProp.Value:
                     condition_message += "Is sent only to me \n"
                 if proptag == '0x57000b' and not condition.lpProp.Value and '0x58000b' not in conlist:
                     condition_message += "When my name is in the To box\n"
@@ -251,8 +257,12 @@ def convertcondition(conditions):
                             condition_message += "Except if the subject contains: "
                         if proptag == '0x1000001f':
                             condition_message += "Except if the body contains: "
-
-                    condition_message += cond.lpProp.Value
+                        if proptag == '0x7d001f':
+                            condition_message += "Except if the header contains: "
+                        if proptag == '0x1a001f':
+                            condition_message += "Except if meeting invitation or update"
+                    if proptag != '0x1a001f':
+                        condition_message += cond.lpProp.Value
 
                 if isinstance(cond, SAndRestriction):
                     andnum = 0
@@ -567,6 +577,11 @@ def createrule(options, lastid):
                     'private': 2,
                     'confidential': 3}
             storeconditions.append(SPropertyRestriction(4,0x360003,SPropValue(0x00360003, sens[condition_var[0].lower()])))
+        if condition_rule == 'meeting-request':
+            storeconditions.append(SOrRestriction([
+                SContentRestriction(65538,0x1a001f,SPropValue(0x001A001F, u'IPM.Schedule.Meeting.Request')),
+                SContentRestriction(65538,0x1a001f,SPropValue(0x001A001F, u'IPM.Schedule.Meeting.Canceled'))
+                ]))
 
     # action part
     for action in actions:
@@ -743,12 +758,17 @@ def createrule(options, lastid):
                 if condition_rule == 'contain-word-in-body':
                     exceptionslist.append(SContentRestriction(65537, 0x1000001f, SPropValue(0x1000001F, word.decode('utf8'))))
                 if condition_rule == 'contain-word-in-header':
-                        exceptionslist.append(SContentRestriction(65537, 0x7d001f , SPropValue(0x007D001F, word.decode('utf8'))))
+                    exceptionslist.append(SContentRestriction(65537, 0x7d001f , SPropValue(0x007D001F, word.decode('utf8'))))
 
             if len(exceptionslist) > 1:
                 storeexceptions.append(SNotRestriction(SOrRestriction(exceptionslist)))
             else:
                 storeexceptions.append(SNotRestriction(exceptionslist[0]))
+        if condition_rule == 'meeting-request':
+            storeexceptions.append(SAndRestriction([SNotRestriction(SOrRestriction([
+                SContentRestriction(65538,0x1a001f,SPropValue(0x001A001F, u'IPM.Schedule.Meeting.Request')),
+                SContentRestriction(65538,0x1a001f,SPropValue(0x001A001F, u'IPM.Schedule.Meeting.Canceled'))]
+                ))]))
 
     #combine conditions and exceptions
     if len(storeexceptions) > 0:

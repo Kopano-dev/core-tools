@@ -150,11 +150,12 @@ Multiple conditions,  actions  and exceptions must we seperated with ;
 * importance (Low, Normal or High)
 * sensitivity (normal, personal, private or confidential)
 * sent-only-to-me
-* contain-word-sender-address  **
-* contain-word-in-subject **
 * contain-word-in-body **
 * contain-word-in-header **
+* contain-word-in-subject **
+* contain-word-sender-address  **
 * message-size (size in kb)
+* meeting-request 
 * received-date (dd-mm-yyyy)
 * has-attachment
 
