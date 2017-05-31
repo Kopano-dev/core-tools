@@ -82,7 +82,10 @@ def fix_folders(store, user, options):
                 print 'Can\'t fix the following folders,  please fix them manually:'
             print '{:50} {:5}'.format('Folder name', 'Entryid')
             for folder in storefolders:
-                print '{:50} {:5}'.format(folder['name'].encode('utf8'), folder['entryid'])
+                try:
+                    print '{:50} {:5}'.format(folder['name'].encode('utf8'), folder['entryid'])
+                except UnicodeEncodeError:
+                    print '{:50} {:5}'.format(folder['name'], folder['entryid'])
         else:
             print 'No broken folders found'
 
