@@ -33,10 +33,10 @@ def main():
         name = 'Public'
         store = kopano.Server(options).public_store
     if not options.delete:
-        print 'Store:', name
+        print 'Store:', name.encode('utf-8')
         print '{:50} {:50} {:50}'.format('Folder name', 'Parent folder', 'Entryid')
         for folder in store.root.folders():
-            print '{:50} {:50} {:50}'.format(folder.name, folder.parent.name, folder.entryid)
+            print '{:50} {:50} {:50}'.format(folder.name.encode('utf8'), folder.parent.name.encode('utf8'), folder.entryid)
     else:
         print 'Not in yet'
 
