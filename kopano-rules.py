@@ -104,7 +104,10 @@ def convertcondition(conditions):
                             condition_message += "Which is a meeting invitation or update"
 
                     if proptag != '0x1a001f':
-                        condition_message += "%s \n" % condition.lpProp.Value
+                        try:
+                            condition_message += "%s \n" % condition.lpProp.Value
+                        except AttributeError as e:
+                            print e, condition
 
                 numaddress += 1
                 if numaddress != totaladdresses and totaladdresses != 1:
