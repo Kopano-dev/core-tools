@@ -16,7 +16,6 @@ import time
 
 
 def opt_args():
-
     parser = kopano.parser('skpc')
     parser.add_option("--user", dest="user", action="store", help="Run script for user ")
     parser.add_option("--list", dest="printrules", action="store_true", help="Print rules")
@@ -29,32 +28,6 @@ def opt_args():
     parser.add_option("--exceptions", dest="exceptions", action="store", help="exceptions")
 
     return parser.parse_args()
-
-
-def checkgab(server, email):
-    global temp
-    check = False
-    entryid = None
-    name = None
-    for address in server.gab_table():
-        for prop in address:
-            if str(prop.idname) == 'PR_ENTRYID':
-                temp = prop.value
-            if prop.idname == 'PR_DISPLAY_NAME':
-                temp = prop.value
-            try:
-                if str(email) == str(prop.value.lower()):
-                    check = True
-                    name = temp
-                    return check, name
-            except AttributeError:
-                continue
-    return check, name
-
-def searchusername(server, name):
-    for user in server.users():
-        if str(user.fullname) == name:
-            return user
 
 def convertcondition(conditions):
     condition_message = ''
@@ -74,6 +47,11 @@ def convertcondition(conditions):
             totalconditions = len(conditions)
     for condition in conditions:
         connum = 0
+        # SExistRestriction
+        if isinstance(condition, SExistRestriction):
+            proptag = hex(condition.ulPropTag)
+            if proptag == '0x1a001e':
+                condition_message += "Is received (all messages)\n"
         # SOrRestriction
         if isinstance(condition, SOrRestriction):
             totaladdresses = len(condition.lpRes)
@@ -139,6 +117,8 @@ def convertcondition(conditions):
             proptag = hex(condition.ulPropTag)
             if proptag not in conlist:
                 conlist.append(proptag)
+                if proptag == "0xc1d0102":
+                    condition_message += "Is received from: %s \n" % condition.lpProp.Value
                 if proptag == '0x57000b' and condition.lpProp.Value:
                     condition_message += "Is sent only to me \n"
                 if proptag == '0x57000b' and not condition.lpProp.Value and '0x58000b' not in conlist:
@@ -182,8 +162,15 @@ def convertcondition(conditions):
 
         if isinstance(condition, SBitMaskRestriction):
             condition_message += "Which has an attachment \n"
-
+        if isinstance(condition, SCommentRestriction):
+            proptag = hex(condition.lpRes.ulPropTag)
+            if proptag not in conlist:
+                conlist.append(proptag)
+                if proptag == '0xc1d0102':
+                    condition_message += "Is received from: "
+            condition_message += "%s \n"  % condition.lpRes.lpProp.Value
         # multiple values
+
         if isinstance(condition, SAndRestriction):
             for andcon in condition.lpRes:
                 if isinstance(andcon, SPropertyRestriction):
@@ -379,7 +366,6 @@ def convertaction(action, user,server):
 
 
 def printrules(filters, user, server):
-
     rulestate = {0: "Disabled",
                  1: "Enabled",
                  2: "Error",
@@ -415,8 +401,11 @@ def changerule(filters, number, state):
     convertstate = {'enable': ST_ENABLED,
                     'disable': ST_DISABLED
                     }
-
-    rule = filters[number - 1]
+    try:
+        rule = filters[number - 1]
+    except IndexError:
+        print('Rule does not exist')
+        sys.exit(1)
     for prop in rule:
         if prop.ulPropTag == PR_RULE_ACTIONS:
             actions = prop.Value
@@ -477,10 +466,15 @@ def createrule(options, lastid):
 
         if condition_rule == 'received-from' or condition_rule == 'sent-to':
             for user in condition_var:
-                check, tmpname = checkgab(server, user)
+                try:
+                    username = server.user(email=user)
+                    check = True
+                except kopano.NotFoundError:
+                    check = False
+
                 if check:
-                    frommail = 'kopano:%s' % user.upper()
-                    fromname = u'%s <%s>' % (tmpname, user)
+                    frommail = 'ZARAFA:%s' % user.upper()
+                    fromname = u'%s <%s>' % (username.name, user)
                 else:
                     frommail = 'SMTP:%s' % user.upper()
                     fromname = u'%s <%s>' % (user, user)
@@ -596,15 +590,17 @@ def createrule(options, lastid):
 
         if action_rule == 'forward-to' or action_rule == 'redirect-to' or action_rule == 'forward-as-attachment':
             for user in action_var:
-                check, tmpname = checkgab(server, user)
-
+                try:
+                    username = server.user(email=user)
+                    check = True
+                except kopano.NotFoundError:
+                    check = False
                 if check:
-                    tomail = 'kopano:%s' % user.upper()
-                    fullname = tmpname
-                    username = searchusername(server, tmpname)
+                    tomail = 'ZARAFA:%s' % user.upper()
+                    fullname = username.fullname
                     name = username.name
                     entryid = username.userid
-                    protocol = u'kopano'
+                    protocol = u'ZARAFA'
                 else:
                     tomail = 'SMTP:%s' % user.upper()
                     fullname = user
@@ -727,10 +723,15 @@ def createrule(options, lastid):
 
         if exception_rule == 'received-from' or exception_rule == 'sent-to':
             for user in exception_var:
-                check, tmpname = checkgab(server, user)
+                try:
+                    username = server.user(email=user)
+                    check = True
+                except kopano.NotFoundError:
+                    check = False
+
                 if check:
-                    frommail = 'kopano:%s' % user.upper()
-                    fromname = u'%s <%s>' % (tmpname, user)
+                    frommail = 'ZARAFA:%s' % user.upper()
+                    fromname = u'%s <%s>' % (username.name, user)
                 else:
                     frommail = 'SMTP:%s' % user.upper()
                     fromname = u'%s <%s>' % (user, user)
@@ -801,10 +802,11 @@ def createrule(options, lastid):
 
 def main():
     options, args = opt_args()
-
+    global server
     if not options.user:
         print 'please user %s --user <username>' % sys.argv[0]
         sys.exit(1)
+
     server = kopano.Server(options)
     user = server.user(options.user)
     rule_table = user.store.inbox.mapiobj.OpenProperty(PR_RULES_TABLE, IID_IExchangeModifyTable, 0, 0)
