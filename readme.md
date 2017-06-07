@@ -18,25 +18,12 @@ delete-items
 Delete items  between  given dates.
 
 ## Usage:
-```python
-python localize-folders.py -u <username> --from  YYYY-MM-DD --until YYYY-MM-DD 
-```
 
 ```python
-python localize-folders.py -u <username> --from YYYY-MM-DD  
+ python delete-items.py -u <username> --from <YYYY-MM-DD> --until <YYYY-MM-DD>
 ```
 
-```python
-python localize-folders.py -u <username> --until YYYY-MM-DD 
-```
-Run for specific folder
-```python
-python localize-folders.py -u <username> --from  YYYY-MM-DD --until YYYY-MM-DD  -f <folder name>
-```
-Dry run mode
-```python
-python localize-folders.py -u <username> --from  YYYY-MM-DD --until YYYY-MM-DD  --dry-run 
-```
+
 localize-folders
 ================
 
@@ -180,12 +167,12 @@ Multiple conditions,  actions  and exceptions must we seperated with ;
 ### Example's
 
 ##### create rule with one condition
+     python kopano-rules.py --user user1 --create firstrule --conditions "received-from:user3@kopano.com" --actions "forward-to:user2@kopano.com"
 
-     python kopano-rules.py --user user1 --create firstrule --conditions "received-from:user3@kopano.com;importance:low" --actions "forward-to:user2@kopano.com"
 
 ##### create rule with multiple conditions
+     python kopano-rules.py --user user1 --create firstrule --conditions "received-from:user3@kopano.com;importance:low" --actions "forward-to:user2@kopano.com"
 
-     python kopano-rules.py --user user1 --create firstrule --conditions "received-from:user3@kopano.com" --actions "forward-to:user2@kopano.com"
 
 #### create rule with multiple actions
 
