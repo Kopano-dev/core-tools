@@ -1,21 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
 
-
-try:
-    import kopano
-except ImportError:
-    import zarafa as kopano
+import kopano
 from MAPI.Util import *
 import binascii
+
 
 def opt_args():
     parser = kopano.parser('skpcf')
     parser.add_option("--user", dest="user", action="store", help="Username")
-
-
     return parser.parse_args()
+
 
 def main():
     options, args = opt_args()
@@ -27,7 +22,7 @@ def main():
 
     # Create tmp task folder
     # Some store can't create Task so we rename it later
-    print  'Create Tmp Tasks  folder'
+    print 'Create Tmp Tasks  folder'
     taskfolder = user.store.subtree.create_folder('TMP-Tasks')
     taskfolder.container_class = 'IPF.TASK'
 
@@ -39,12 +34,13 @@ def main():
         user.store.root.delete(taskfolder)
         sys.exit(1)
 
-    #promote to task folder
+    # promote to task folder
     print 'Promote Tasks folder'
     user.store.root.mapiobj.SetProps([SPropValue(PR_IPM_TASK_ENTRYID, binascii.unhexlify(taskfolder.entryid))])
     user.store.root.mapiobj.SaveChanges(KEEP_OPEN_READWRITE)
 
     print 'Renaming Folder to Tasks'
+
 
 if __name__ == "__main__":
     main()
