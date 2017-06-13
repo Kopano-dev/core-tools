@@ -82,9 +82,9 @@ def main():
     for user in kopano.Server(options).users(options.users):
         print user.name
         if options.reset:
-            print '%s: Changing localized folder names to \"en_GB.UTF-8\"' % user.name
+            print '%s: Changing localized folder names to \"en_GB.UTF-8\"' % user.name.decode('utf-8')
         else:
-            print '%s: Changing localized folder names to \"%s\"' % (user.name, options.lang)
+            print '%s: Changing localized folder names to \"%s\"' % (user.name.decode('utf-8'), options.lang)
 
         if options.verbose:
             print 'Running in verbose mode'
@@ -95,17 +95,17 @@ def main():
             try:
                 folderobject = getattr(user.store, mapifolder)
             except AttributeError as e:
-                print 'Warning: Cannot find MAPI folder %s, error code: %s' % (mapifolder, e)
+                print 'Warning: Cannot find MAPI folder %s, error code: %s' % (mapifolder.decode('utf-8'), e)
                 continue
 
             localizedname = trans[mapifolder]
             if options.verbose or options.dryrun:
-                print 'Changing MAPI "%s" -> Renaming "%s" to "%s"' % (mapifolder, folderobject.name, localizedname)
+                print 'Changing MAPI "%s" -> Renaming "%s" to "%s"' % (mapifolder.decode('utf-8'), folderobject.name.decode('utf-8'), localizedname.decode('utf-8'))
             if not options.dryrun:
                 try:
                     folderobject.prop(PR_DISPLAY_NAME).set_value(localizedname)
                 except MAPI.Struct.MAPIErrorCollision:
-                    print '%s is already being used' % localizedname
+                    print '%s is already being used' % localizedname.decode('utf-8')
                     sys.exit(1)
 
 
