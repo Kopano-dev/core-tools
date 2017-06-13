@@ -118,7 +118,7 @@ def convertcondition(conditions):
             if proptag not in conlist:
                 conlist.append(proptag)
                 if proptag == "0xc1d0102":
-                    condition_message += "Is received from: %s \n" % condition.lpProp.Value
+                    condition_message += "Is received from: %s \n" % condition.lpProp.Value.replace('ZARAFA:', '').replace('SMTP:', '').lower()
                 if proptag == '0x57000b' and condition.lpProp.Value:
                     condition_message += "Is sent only to me \n"
                 if proptag == '0x57000b' and not condition.lpProp.Value and '0x58000b' not in conlist:
@@ -168,7 +168,7 @@ def convertcondition(conditions):
                 conlist.append(proptag)
                 if proptag == '0xc1d0102':
                     condition_message += "Is received from: "
-            condition_message += "%s \n"  % condition.lpRes.lpProp.Value
+            condition_message += "%s \n"  % condition.lpRes.lpProp.Value.replace('ZARAFA:', '').replace('SMTP:', '').lower()
         # multiple values
 
         if isinstance(condition, SAndRestriction):
@@ -755,13 +755,13 @@ def createrule(options, lastid):
         if exception_rule == 'contain-word-sender-address' or exception_rule == 'contain-word-in-subject' \
             or exception_rule == 'contain-word-in-body' or exception_rule == 'contain-word-in-header':
             for word in exception_var:
-                if condition_rule == 'contain-word-sender-address':
+                if exception_rule == 'contain-word-sender-address':
                     exceptionslist.append(SContentRestriction(1, 0xc1d0102, SPropValue(0x0C1D0102, word.decode('utf8').encode('ISO-8859-1'))))
-                if condition_rule == 'contain-word-in-subject':
+                if exception_rule == 'contain-word-in-subject':
                     exceptionslist.append(SContentRestriction(65537, 0x37001f, SPropValue(0x0037001F, word.decode('utf8'))))
-                if condition_rule == 'contain-word-in-body':
+                if exception_rule == 'contain-word-in-body':
                     exceptionslist.append(SContentRestriction(65537, 0x1000001f, SPropValue(0x1000001F, word.decode('utf8'))))
-                if condition_rule == 'contain-word-in-header':
+                if exception_rule == 'contain-word-in-header':
                     exceptionslist.append(SContentRestriction(65537, 0x7d001f , SPropValue(0x007D001F, word.decode('utf8'))))
 
             if len(exceptionslist) > 1:
