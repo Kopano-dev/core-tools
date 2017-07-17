@@ -3,19 +3,20 @@ from MAPI.Util import *
 import sys
 import types
 import json
+import csv
 
 def opt_args():
     parser = kopano.parser('skpcf')
     parser.add_option("--user", dest="user", action="store", help="Run script for user ")
-    parser.add_option("--file", dest="file", action="store", help="NK2 file")
+    parser.add_option("--file", dest="file", action="store", help="NK2/CSV file")
 
-
+    parser.add_option("--csv", dest="csv", action="store_true", help="Use csv file instead")
+    parser.add_option("--delimiter", dest="delimiter", action="store", help="Change delimiter (default is ,)")
     return parser.parse_args()
 
 def isString(s):
     "True if it's a python or Unicode string"
     return type(s) in (types.StringType, types.UnicodeType)
-
 
 class nk2addr:
 
@@ -137,9 +138,37 @@ def getnk2_list(options):
                                 "count": 1, "object_type": 6, 'display_name':unicode(split1[0][1:], "latin1")})
     return contactlist
 
+def csv_list(options):
+    contactlist = []
+    if options.delimiter:
+        delimiter = options.delimiter
+    else:
+        delimiter = ','
+    cr = csv.reader(open(options.file, "rb"), delimiter=delimiter)
+    headers = next(cr)
+    total = len(headers)
+    for num in range(0, total, 1):
+        if headers[num] == 'address_type':
+            address_type = num
+        if headers[num] == 'display_name':
+            display_name = num
+        if headers[num] == 'email_address':
+            email_address = num
+
+    for contact in cr:
+
+        contactlist.append({'smtp_address': contact[email_address], 'email_address': contact[email_address], 'address_type': contact[address_type],
+                           "count": 1, "object_type": 6, 'display_name': contact[display_name]})
+
+    return contactlist
+
+
 def main():
     options, args = opt_args()
-    contactlist = getnk2_list(options)
+    if not options.csv:
+        contactlist = getnk2_list(options)
+    else:
+        contactlist = csv_list(options)
     user = kopano.Server(options).user(options.user)
     history = user.store.prop(0X6773001F).value
     history = json.loads(history)
