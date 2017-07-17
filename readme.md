@@ -24,7 +24,30 @@ New untested kopano permissions script
 
 ### NK2-to-suggested-contacts
 
-Convert NK2 files to suggested contacts 
+## Usage
+
+Restore NK2 file
+    ```python
+        python NK2-to-suggested-contacts.py --user <username> --file </path/to/NK2/file>
+    ```
+Restore CSV file
+    ```python
+        python NK2-to-suggested-contacts.py --user <username> --file </path/to/NK2/file> --csv
+    ```
+
+## options
+* --user
+
+    username on which the restore action takes place
+* --file
+
+    NK2 or CSV file that need to be restored
+* --csv
+
+    Use a CSV file instead (need to have the headers  (address_type, display_name, email_address))
+* --delimiter
+
+    Overwrite the default delimiter ,
 
 ### fix-folder-class
 
