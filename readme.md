@@ -28,15 +28,12 @@ New untested kopano permissions script
 
 Restore NK2 file
 
-    ```
         python NK2-to-suggested-contacts.py --user <username> --file </path/to/NK2/file>
-    ```
+
 
 Restore CSV file
 
-    ```
         python NK2-to-suggested-contacts.py --user <username> --file </path/to/NK2/file> --csv
-    ```
 
 ## options
 * --user
