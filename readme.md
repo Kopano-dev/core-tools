@@ -74,11 +74,32 @@ python recreate-systemfolders --user \<user\> --create <foldername> --systemfold
 \* Inbox folder  can't be recreated. 
 \*\* Following systemfolders are available  calendar, contacts, drafts, journal, notes, outbox, sentmail, task, wastebasket
 
+
+show-guid
+================
+
+
+The following script prints the primairy and archive store GUID if exist.  
+
+
+
 kopano-rules
 ============
 
 kopano-rules is a cli to modify or change a server side rule
 
+## Usage
+
+for all users
+```python
+python show-guid.py 
+```
+
+For specific user(s)
+```python
+python show-guid.py -u <username>*
+```
+\* -u can be called multiple times 
 
 ## Features
 
