@@ -58,7 +58,7 @@ def main():
                 to_folder = to_store.subtree.create_folder(folder.path)
                 from_store.subtree.copy(folder, to_folder)
             else:
-                print 'Folder name already exist. please remove or use the parameter --remove'
+                print 'Folder name already exist. please remove it or use the parameter --remove'
 
 if __name__ == "__main__":
     main()
