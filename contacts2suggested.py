@@ -71,13 +71,13 @@ def main():
     else:
         for contact in user.store.contacts:
             try:
-                email = contact.prop(0X8133001F).value
+                email = contact.prop('address:32896').value
                 if str(email) not in str(history['recipients']):
-                    history['recipients'].append({"display_name": contact.prop(0X8130001F).value,
+                    history['recipients'].append({"display_name": contact.prop('address:32773').value,
                                                   "smtp_address": "",
                                                   "email_address": email, "address_type": "ZARAFA", "count": 1,
                                                   "object_type": 6})
-            except MAPIErrorNotFound:
+            except kopano.NotFoundError:
                 continue
 
 
