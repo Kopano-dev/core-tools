@@ -54,7 +54,10 @@ def main():
                     history_json['recipients'].append({"display_name": name,
                                                   "smtp_address": email,
                                                   "email_address": email, "address_type": addresstype, "count": 1,
-                                                  "object_type": 6})
+                                                  "object_type": 6,
+                                                  "last_used": item.received.strftime('%s'),
+                                                  "count": 1,
+                                                  })
 
                 num += 1
                 add += 1
