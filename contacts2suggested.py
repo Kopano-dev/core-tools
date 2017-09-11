@@ -45,25 +45,29 @@ def main():
         for item in user.store.sentmail:
             for recipient in item.to:
                 email = recipient.email
-                if email not in history_text:
-                    if options.days:
-                        until = today + datetime.timedelta(days=int(options.days))
-                        if item.received > until:
-                            continue
+                if email in history_text:
+                    continue
 
-                    recip = create_recipient(recipient.name, email, recipient.addrtype, item.received)
-                    history_json['recipients'].append(recip)
-                num += 1
-                if options.total and num == int(options.total):
-                    break
+                if options.days:
+                    until = today + datetime.timedelta(days=int(options.days))
+                    if item.received > until:
+                        continue
+
+                recip = create_recipient(recipient.name, email, recipient.addrtype, item.received)
+                history_json['recipients'].append(recip)
+            num += 1
+            if options.total and num == int(options.total):
+                break
     else:
         for contact in user.store.contacts:
             try:
                 email = contact.prop('address:32896').value
-                if email not in history_text:
-                    name = contact.prop('address:32773').value,
-                    recip = create_recipient(name, email, "SMTP")
-                    history_json['recipients'].append(recip)
+                if email in history_text:
+                    continue
+
+                name = contact.prop('address:32773').value,
+                recip = create_recipient(name, email, "SMTP")
+                history_json['recipients'].append(recip)
             except kopano.NotFoundError:
                 continue
 
