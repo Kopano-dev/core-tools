@@ -33,8 +33,8 @@ def main():
     options, _ = opt_args()
 
     user = kopano.Server(options).user(options.user)
-    history = user.store.prop(PR_EC_RECIPIENT_HISTORY_JSON).value
-    history = json.loads(history)
+    history = user.store.prop(PR_EC_RECIPIENT_HISTORY_JSON)
+    history_json = json.loads(history.value)
     if options.sent:
         num = 0
         today = datetime.datetime.now()
@@ -47,7 +47,7 @@ def main():
                 email = searchemail(address)
                 if email:
                     email = email.replace('<', '').replace('>', '').replace('(', '').replace(')', '').replace("'", '').replace('"', '')
-                    if email not in str(history['recipients']):
+                    if email not in str(history_json['recipients']):
                         if options.days:
                             until = today + datetime.timedelta(days=int(options.days))
                             messagedate = item.prop(PR_MESSAGE_DELIVERY_TIME).value
@@ -59,7 +59,7 @@ def main():
                         else:
                             addresstype= 'SMTP'
 
-                        history['recipients'].append({"display_name": names[add].lstrip().replace("'", ''),
+                        history_json['recipients'].append({"display_name": names[add].lstrip().replace("'", ''),
                                                       "smtp_address": email.lstrip(),
                                                       "email_address": email.lstrip(), "address_type": addresstype, "count": 1,
                                                       "object_type": 6})
@@ -72,8 +72,8 @@ def main():
         for contact in user.store.contacts:
             try:
                 email = contact.prop('address:32896').value
-                if str(email) not in str(history['recipients']):
-                    history['recipients'].append({"display_name": contact.prop('address:32773').value,
+                if str(email) not in str(history_json['recipients']):
+                    history_json['recipients'].append({"display_name": contact.prop('address:32773').value,
                                                   "smtp_address": "",
                                                   "email_address": email, "address_type": "ZARAFA", "count": 1,
                                                   "object_type": 6})
@@ -81,8 +81,7 @@ def main():
                 continue
 
 
-    user.store.mapiobj.SetProps([SPropValue(PR_EC_RECIPIENT_HISTORY_JSON, u'%s' % json.dumps(history))])
-    user.store.mapiobj.SaveChanges(KEEP_OPEN_READWRITE)
+    history.value = json.dumps(history_json).encode('utf-8')
 
 if __name__ == "__main__":
     main()
