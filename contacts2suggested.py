@@ -61,7 +61,7 @@ def main():
         for contact in user.store.contacts:
             try:
                 email = contact.prop('address:32896').value
-                if str(email) not in str(history_json['recipients']):
+                if email not in str(history_json['recipients']):
                     name = contact.prop('address:32773').value,
                     recip = create_recipient(name, email, "SMTP")
                     history_json['recipients'].append(recip)
