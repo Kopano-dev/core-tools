@@ -2,14 +2,14 @@
 # -*- coding: utf-8 -*-
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
 
+import json
+import datetime
 
 try:
     import kopano
 except ImportError:
     import zarafa as kopano
 from MAPI.Util import *
-import json
-import datetime
 
 
 def opt_args():
