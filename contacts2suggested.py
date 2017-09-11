@@ -39,30 +39,22 @@ def main():
         num = 0
         today = datetime.datetime.now()
         for item in user.store.sentmail:
-            emails = item.prop(PR_DISPLAY_TO_W).value.split(';')
-            names = item.prop(PR_DISPLAY_TO_W).value.split(';')
             add =0
-            for address in emails:
+            for recipient in item.to:
+                email = recipient.email
+                name = recipient.name
+                addresstype = recipient.addrtype
+                if email not in str(history_json['recipients']):
+                    if options.days:
+                        until = today + datetime.timedelta(days=int(options.days))
+                        messagedate = item.prop(PR_MESSAGE_DELIVERY_TIME).value
+                        if messagedate > until:
+                            continue
 
-                email = searchemail(address)
-                if email:
-                    email = email.replace('<', '').replace('>', '').replace('(', '').replace(')', '').replace("'", '').replace('"', '')
-                    if email not in str(history_json['recipients']):
-                        if options.days:
-                            until = today + datetime.timedelta(days=int(options.days))
-                            messagedate = item.prop(PR_MESSAGE_DELIVERY_TIME).value
-                            if messagedate > until:
-                                continue
-
-                        if len(item.prop(PR_DISPLAY_TO_W).value) > 0:
-                            addresstype = 'ZARAFA'
-                        else:
-                            addresstype= 'SMTP'
-
-                        history_json['recipients'].append({"display_name": names[add].lstrip().replace("'", ''),
-                                                      "smtp_address": email.lstrip(),
-                                                      "email_address": email.lstrip(), "address_type": addresstype, "count": 1,
-                                                      "object_type": 6})
+                    history_json['recipients'].append({"display_name": name,
+                                                  "smtp_address": email,
+                                                  "email_address": email, "address_type": addresstype, "count": 1,
+                                                  "object_type": 6})
 
                 num += 1
                 add += 1
