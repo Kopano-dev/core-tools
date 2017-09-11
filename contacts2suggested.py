@@ -34,11 +34,11 @@ def create_recipient(name, email, addrtype, last_used=datetime.datetime.now()):
 
 def main():
     options, _ = opt_args()
-
     user = kopano.Server(options).user(options.user)
     history = user.store.prop(PR_EC_RECIPIENT_HISTORY_JSON)
     history_json = json.loads(history.value)
     history_text = str(history_json['recipients'])
+
     if options.sent:
         num = 0
         today = datetime.datetime.now()
@@ -70,7 +70,6 @@ def main():
                 history_json['recipients'].append(recip)
             except kopano.NotFoundError:
                 continue
-
 
     history.value = json.dumps(history_json).encode('utf-8')
 
