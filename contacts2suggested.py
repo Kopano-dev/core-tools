@@ -39,7 +39,6 @@ def main():
         num = 0
         today = datetime.datetime.now()
         for item in user.store.sentmail:
-            add =0
             for recipient in item.to:
                 email = recipient.email
                 name = recipient.name
@@ -60,7 +59,6 @@ def main():
                                                   })
 
                 num += 1
-                add += 1
                 if options.total and num == int(options.total):
                     break
     else:
