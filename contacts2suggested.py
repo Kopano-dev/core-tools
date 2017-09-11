@@ -17,7 +17,7 @@ def opt_args():
     parser.add_option("--user", dest="user", action="store", help="Run script for user ")
     parser.add_option("--sent", dest="sent", action="store_true", help="import user from sent items")
     parser.add_option("--total", dest="total", action="store", help="amount of contacts")
-    parser.add_option("--days", dest="days", action="store", help="import user from sent items")
+    parser.add_option("--days", dest="days", action="store", help="total amount of days to import users from sent items")
 
     return parser.parse_args()
 
