@@ -9,7 +9,7 @@ try:
     import kopano
 except ImportError:
     import zarafa as kopano
-from MAPI.Util import *
+from MAPI.Tags import PR_EC_RECIPIENT_HISTORY_JSON
 
 
 def opt_args():
