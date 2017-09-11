@@ -33,7 +33,7 @@ def main():
     options, _ = opt_args()
 
     user = kopano.Server(options).user(options.user)
-    history = user.store.prop(0X6773001F).value
+    history = user.store.prop(PR_EC_RECIPIENT_HISTORY_JSON).value
     history = json.loads(history)
     if options.sent:
         num = 0
@@ -81,7 +81,7 @@ def main():
                 continue
 
 
-    user.store.mapiobj.SetProps([SPropValue(0X6773001F, u'%s' % json.dumps(history))])
+    user.store.mapiobj.SetProps([SPropValue(PR_EC_RECIPIENT_HISTORY_JSON, u'%s' % json.dumps(history))])
     user.store.mapiobj.SaveChanges(KEEP_OPEN_READWRITE)
 
 if __name__ == "__main__":
