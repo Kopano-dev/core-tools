@@ -30,7 +30,7 @@ def searchemail(displayname):
 
 
 def main():
-    options, args = opt_args()
+    options, _ = opt_args()
 
     user = kopano.Server(options).user(options.user)
     history = user.store.prop(0X6773001F).value
