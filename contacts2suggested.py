@@ -45,15 +45,13 @@ def main():
         for item in user.store.sentmail:
             for recipient in item.to:
                 email = recipient.email
-                name = recipient.name
-                addresstype = recipient.addrtype
                 if email not in history_text:
                     if options.days:
                         until = today + datetime.timedelta(days=int(options.days))
                         if item.received > until:
                             continue
 
-                    recip = create_recipient(name, email, addresstype, item.received)
+                    recip = create_recipient(recipient.name, email, recipient.addrtype, item.received)
                     history_json['recipients'].append(recip)
                 num += 1
                 if options.total and num == int(options.total):
