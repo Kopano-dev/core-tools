@@ -38,6 +38,7 @@ def main():
     user = kopano.Server(options).user(options.user)
     history = user.store.prop(PR_EC_RECIPIENT_HISTORY_JSON)
     history_json = json.loads(history.value)
+    history_text = str(history_json['recipients'])
     if options.sent:
         num = 0
         today = datetime.datetime.now()
@@ -46,7 +47,7 @@ def main():
                 email = recipient.email
                 name = recipient.name
                 addresstype = recipient.addrtype
-                if email not in str(history_json['recipients']):
+                if email not in history_text:
                     if options.days:
                         until = today + datetime.timedelta(days=int(options.days))
                         if item.received > until:
@@ -61,7 +62,7 @@ def main():
         for contact in user.store.contacts:
             try:
                 email = contact.prop('address:32896').value
-                if email not in str(history_json['recipients']):
+                if email not in history_text:
                     name = contact.prop('address:32773').value,
                     recip = create_recipient(name, email, "SMTP")
                     history_json['recipients'].append(recip)
