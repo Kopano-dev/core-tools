@@ -21,6 +21,16 @@ def opt_args():
 
     return parser.parse_args()
 
+def create_recipient(name, email, addrtype, last_used=datetime.datetime.now()):
+    return {
+        "display_name": name,
+        "smtp_address": email,
+        "email_address": email,
+        "address_type": addrtype,
+        "object_type": 6,
+        "last_used": last_used.strftime('%s'),
+        "count": 1
+    }
 
 def main():
     options, _ = opt_args()
@@ -43,14 +53,8 @@ def main():
                         if messagedate > until:
                             continue
 
-                    history_json['recipients'].append({"display_name": name,
-                                                  "smtp_address": email,
-                                                  "email_address": email, "address_type": addresstype, "count": 1,
-                                                  "object_type": 6,
-                                                  "last_used": item.received.strftime('%s'),
-                                                  "count": 1,
-                                                  })
-
+                    recip = create_recipient(name, email, addresstype, item.received)
+                    history_json['recipients'].append(recip)
                 num += 1
                 if options.total and num == int(options.total):
                     break
@@ -59,10 +63,9 @@ def main():
             try:
                 email = contact.prop('address:32896').value
                 if str(email) not in str(history_json['recipients']):
-                    history_json['recipients'].append({"display_name": contact.prop('address:32773').value,
-                                                  "smtp_address": "",
-                                                  "email_address": email, "address_type": "ZARAFA", "count": 1,
-                                                  "object_type": 6})
+                    name = contact.prop('address:32773').value,
+                    recip = create_recipient(name, email, "SMTP")
+                    history_json['recipients'].append(recip)
             except kopano.NotFoundError:
                 continue
 
