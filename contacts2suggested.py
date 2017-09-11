@@ -49,8 +49,7 @@ def main():
                 if email not in str(history_json['recipients']):
                     if options.days:
                         until = today + datetime.timedelta(days=int(options.days))
-                        messagedate = item.prop(PR_MESSAGE_DELIVERY_TIME).value
-                        if messagedate > until:
+                        if item.received > until:
                             continue
 
                     recip = create_recipient(name, email, addresstype, item.received)
