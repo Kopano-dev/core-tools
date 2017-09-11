@@ -21,13 +21,6 @@ def opt_args():
 
     return parser.parse_args()
 
-def searchemail(displayname):
-    for word in displayname.split():
-        if '@' in word:
-            return word
-
-    return False
-
 
 def main():
     options, _ = opt_args()
