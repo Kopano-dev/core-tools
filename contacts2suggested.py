@@ -65,7 +65,7 @@ def main():
                 if email in history_text:
                     continue
 
-                name = contact.prop('address:32773').value,
+                name = contact.prop('address:32773').value
                 recip = create_recipient(name, email, "SMTP")
                 history_json['recipients'].append(recip)
             except kopano.NotFoundError:
