@@ -32,7 +32,7 @@ Usage
 =====
 
 
-Emport
+Export
 =====
 
     python contact2csv.py --user <username> --export --delimiter "<delimiter>"*
