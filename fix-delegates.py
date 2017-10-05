@@ -45,7 +45,7 @@ def main():
 
 
 # modify
-    freebusy_folder = user.store.folder('Freebusy Data')
+    freebusy_folder = user.store.root.folder('Freebusy Data')
     freebusy_folder_recordkey = getprop(freebusy_folder, 0x0FF90102)
     for item in freebusy_folder.items():
         if item.subject == 'LocalFreebusy':
