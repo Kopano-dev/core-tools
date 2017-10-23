@@ -315,9 +315,16 @@ def convertaction(action, user,server):
     action_message = ''
     movetype = {1: 'Move',
                 2: 'Copy',}
-    countact = len(action.Value.lpAction)
+    try:
+        countact = len(action.Value.lpAction)
+    except AttributeError:
+	return 'Unknown  action'
+
+
     num = 0
     for act in action.Value.lpAction:
+        if isinstance(act.actobj, actDeferAction):
+	    action_message += 'Deferred  action (client side rule)'
         if isinstance(act.actobj, actMoveCopy):
             folderid = binascii.hexlify(act.actobj.FldEntryId)
             storeid = act.actobj.StoreEntryId
@@ -327,12 +334,18 @@ def convertaction(action, user,server):
                 except TypeError:
                     foldername = user.store.folder(folderid).name
             except kopano.NotFoundError:
-                mapistore = server.mapisession.OpenMsgStore(0, storeid, IID_IMsgStore, MDB_WRITE)
-                newstore = kopano.Store(mapiobj=mapistore, server=server)
-                try:
-                    foldername = '%s (%s)' % (newstore.folder(entryid=folderid).name, newstore.user.name)
-                except TypeError:
-                    foldername = '%s (%s)' % (newstore.folder(folderid).name, newstore.user.name)
+		try:
+  	            mapistore = server.mapisession.OpenMsgStore(0, storeid, IID_IMsgStore, MDB_WRITE)
+        	    newstore = kopano.Store(mapiobj=mapistore, server=server)
+			
+                    try:
+                        foldername = '%s (%s)' % (newstore.folder(entryid=folderid).name, newstore.user.name)
+                    except TypeError:
+                        foldername = '%s (%s)' % (newstore.folder(folderid).name, newstore.user.name)
+		    except AttributeError:
+			foldername = 'Folder not available'
+		except MAPI.Struct.MAPIErrorNotFound:
+		    foldername = 'unknown'
 
 
             if act.acttype == 1:
@@ -376,10 +389,9 @@ def printrules(filters, user, server):
 
     table_data = [["Number", "Name", "Condition", "Action", "State"]]
     for rule in filters:
-
         condition_message = convertcondition(rule[4].Value)
-
         actions = convertaction(rule[5], user,server)
+	
         name = rule[7].Value
         if not isinstance(condition_message, unicode):
             condition = unicode(condition_message, encoding='ISO-8859-1')
