@@ -32,9 +32,10 @@ extra = {"PR_DISPLAY_NAME_FULL": 0x8130001f,
          "PR_DISPLAY_NAME_FULL2": 0X8140001F,
          "PR_EMAIL3": 0X8154001F,
          "PR_MAIL3": 0X8153001F,
-         "PR_DISPLAY_NAME_FULL3": 0X8150001F
+         "PR_DISPLAY_NAME_FULL3": 0X8150001F,
+         "PR_CATEGORIES": 0x850d101f,
+         "PR_PRIVATE": 0x81a6000b
 }
-
 
 def opt_args():
     parser = kopano.parser('skpcm')
@@ -45,6 +46,7 @@ def opt_args():
     parser.add_option("--delimiter", dest="delimiter", action="store", help="Change delimiter (default is ,)")
     parser.add_option("--purge", dest="purge", action="store_true", help="Purge contacts before the import")
     parser.add_option("--progressbar", dest="progressbar", action="store_true", help="Show progressbar ")
+    parser.add_option("--public", dest="public", action="store_true", help="Run script for public store")
 
     return parser.parse_args()
 
@@ -67,33 +69,47 @@ def progressbar(count):
 
 
 def getprop(item, myprop):
-
     try:
         if item.prop(myprop).typename == 'PT_UNICODE':
             return item.prop(myprop).value.encode('utf-8')
-        if item.prop(myprop).typename == 'PT_SYSTIME':
+        elif item.prop(myprop).typename == 'PT_SYSTIME':
             epoch = datetime.utcfromtimestamp(0)
             return (item.prop(myprop).value - epoch).total_seconds()
-    except MAPIErrorNotFound:
+        elif item.prop(myprop).typename == 'PT_I4':
+            return int(item.prop(myprop).value)
+        else:
+
+            return item.prop(myprop).value
+    except (MAPIErrorNotFound, kopano.errors.NotFoundError):
         return None
 
 
 def main():
     options, args = opt_args()
-    if not options.user:
+    if not options.user and not options.public:
         sys.exit('Please use:\n %s --user <username>  ' % (sys.argv[0]))
     contactsarray = []
-    user = kopano.Server(options).user(options.user)
-    print 'running script for \'%s\'' % user.name
+
+    if options.public and not options.folder:
+        print('Please use --folder  if public store is selected')
+        sys.exit(1)
+    server = kopano.Server(options)
+    if options.public:
+        store = server.public_store
+        user = 'Public store'
+    else:
+        user =  server.user(options.user).name
+        store = server.user(options.user).store
+    print 'running script for \'%s\'' % user
     if options.delimiter:
         delimiter = options.delimiter
     else:
         delimiter = ','
     if options.export:
         if options.folder:
-            contacts = user.store.folder(options.folder)
+            contacts = store.folder(options.folder)
         else:
-            contacts = user.store.contacts
+            contacts = store.contacts
         if options.progressbar:
             pbar = progressbar(contacts.count * 2)
         print 'export contacts'
@@ -134,9 +150,12 @@ def main():
                  getprop(contact, extra['PR_ADDRESS']),
                  getprop(contact, extra['PR_CITY']), getprop(contact, extra['PR_STATE']),
                  getprop(contact, extra['PR_ZIP']),
-                 getprop(contact, extra['PR_COUNTRY']), getprop(contact, extra['PR_IM']), getprop(contact, PR_BODY_W)])
+                 getprop(contact, extra['PR_COUNTRY']), getprop(contact, extra['PR_IM']), getprop(contact, PR_BODY_W),
+                 getprop(contact, PR_SENSITIVITY), getprop(contact, extra['PR_CATEGORIES']),
+                 getprop(contact, extra['PR_PRIVATE'])])
+
             itemcount += 1
-        resultFile = open("%s_contacts.csv" % user.name, 'w')
+        resultFile = open("%s_contacts.csv" % user, 'w')
         wr = csv.writer(resultFile, delimiter=delimiter)
 
         wr.writerow(['PR_SUBJECT', 'PR_DISPLAY_NAME', 'PR_GENERATION', 'PR_GIVEN_NAME', 'PR_BUSINESS_TELEPHONE_NUMBER',
@@ -159,8 +178,8 @@ def main():
                      'PR_WEDDING_ANNIVERSARY', 'PR_BIRTHDAY',
                      'PR_DISPLAY_NAME_FULL', 'PR_EMAIL', 'PR_FILE_AS', 'PR_WEBSITE', 'PR_MAIL',
                      'PR_DISPLAY_NAME_FULL2', 'PR_EMAIL2','PR_MAIL2','PR_DISPLAY_NAME_FULL3', 'PR_EMAIL3','PR_MAIL3',
-                     'PR_ADDRESS', 'PR_CITY', 'PR_STATE', 'PR_ZIP', 'PR_COUNTRY', 'PR_IM', 'PR_BODY'])
-        print contactsarray
+                     'PR_ADDRESS', 'PR_CITY', 'PR_STATE', 'PR_ZIP', 'PR_COUNTRY', 'PR_IM', 'PR_BODY', 'PR_SENSITIVITY',
+                     'PR_CATEGORIES', 'PR_PRIVATE'])
         for contact in contactsarray:
             if options.progressbar:
                 pbar.update(itemcount + 1)
@@ -171,9 +190,9 @@ def main():
 
     if options.restore:
         if options.folder:
-            contacts = user.store.folder(options.folder)
+            contacts = store.folder(options.folder)
         else:
-            contacts = user.store.contacts
+            contacts = store.contacts
         if options.purge:
             contacts.empty()
         if options.progressbar:
@@ -195,8 +214,8 @@ def main():
                             value = MAPI.Time.unixtime(time.mktime(datetime_date.timetuple()))
                         else:
                             value = contact[num].decode('utf-8').replace(u'\xa0', u' ')
-
                         if str(headers[num]) in extra:
+
                             new_item.mapiobj.SetProps([SPropValue(extra[headers[num]], value)])
                         else:
                             new_item.mapiobj.SetProps([SPropValue(getattr(MAPI.Util,headers[num]), value)])
