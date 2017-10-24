@@ -37,6 +37,11 @@ Export
 
     python contact2csv.py --user <username> --export --delimiter "<delimiter>"*
 
+Export from public store
+========================
+
+    python contact2csv.py --public --folder foldername --export --delimiter "<delimiter>"*
+
 Import
 ======
 
