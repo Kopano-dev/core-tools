@@ -44,7 +44,7 @@ def translate(lang, reset):
 
         encoding = locale.getlocale()[1]
 
-        if "UTF-8" not in encoding:
+        if "UTF-8" not in encoding and "UTF8" not in encoding:
             print 'Error: Locale "%s" is in "%s" not in UTF-8, please select an appropriate UTF-8 locale.' % (
                 lang, encoding)
             sys.exit(1)
@@ -103,7 +103,11 @@ def main():
                 print 'Changing MAPI "%s" -> Renaming "%s" to "%s"' % (mapifolder.decode('utf-8'), folderobject.name.decode('utf-8'), localizedname.decode('utf-8'))
             if not options.dryrun:
                 try:
-                    folderobject.prop(PR_DISPLAY_NAME).set_value(localizedname)
+                    # Use the old MAPI way as set_value doesn't exist in the master  build
+                    folderobject.mapiobj.SetProps([SPropValue(PR_DISPLAY_NAME, localizedname)])
+                    folderobject.mapiobj.SaveChanges(KEEP_OPEN_READWRITE)
+
+#                    folderobject.prop(PR_DISPLAY_NAME).set_value(localizedname)
                 except MAPI.Struct.MAPIErrorCollision:
                     print '%s is already being used' % localizedname.decode('utf-8')
                     sys.exit(1)
