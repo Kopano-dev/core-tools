@@ -94,18 +94,6 @@ kopano-rules
 
 kopano-rules is a cli to modify or change a server side rule
 
-## Usage
-
-for all users
-```python
-python show-guid.py 
-```
-
-For specific user(s)
-```python
-python show-guid.py -u <username>*
-```
-\* -u can be called multiple times 
 
 ## Features
 
