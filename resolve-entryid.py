@@ -40,7 +40,7 @@ def main():
                         try:
                             data = attachment.data
                         except Exception as e:
-                            print ('Attachment could not be reade {} error {}'.format(attachment.filename, e))
+                            print ('Attachment could not be read {} error {}'.format(attachment.filename, e))
                         else:
                             print ('Attachment could be read : {}'.format(attachment.name))
 
