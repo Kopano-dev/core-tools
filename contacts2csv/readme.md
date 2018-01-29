@@ -1,7 +1,7 @@
 contact2csv
 ======
 
-contact2csv van export every contact to a csv file and can import it back.
+contact2csv can export and import contacts to/from  a csv file.
 
 
 Features

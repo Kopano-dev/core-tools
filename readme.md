@@ -205,9 +205,7 @@ Multiple conditions,  actions  and exceptions must we seperated with ;
 * list issues with name-in-cc and  name-in-to
 * sensitivity  'normal' is not selectable in webapp
 
-resolve-entryid.py
-============
-
+# resolve-entryid.py
 
 Tries to resolve which item a given entryid is, optionally dumping to an eml as a file, or deleting the item.
 
