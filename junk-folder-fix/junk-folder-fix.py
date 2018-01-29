@@ -6,6 +6,7 @@
 import kopano
 from MAPI.Util import *
 
+
 def opt_args():
     parser = kopano.parser('skpfucm')
     return parser.parse_args()
@@ -13,7 +14,7 @@ def opt_args():
 
 def main():
     options, args = opt_args()
-    for user in  kopano.Server(options).users():
+    for user in kopano.Server(options).users():
         if user.store:
             if user.junk.name == 'Ongewenste E-mail':
                 print('Renaming junk folder for user {}'.format(user.name))
@@ -23,5 +24,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
