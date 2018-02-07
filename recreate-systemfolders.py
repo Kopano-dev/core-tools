@@ -48,10 +48,10 @@ def main():
         else:
             name = uuid.uuid4()
         try:
-            print 'create tmp folder', name
-            tmp = user.store.subtree.create_folder(str(name))
+            print 'create tmp folder', name.decode('utf-8')
+            tmp = user.store.subtree.create_folder(name.decode('utf-8'))
         except MAPIErrorCollision:
-            print '%s already exist' % name
+            print '%s already exist' % name.decode('utf-8')
             sys.exit(1)
 
         if not options.create:
@@ -65,8 +65,8 @@ def main():
                 getattr(user.store, options.systemfolder).delete(getattr(user.store, options.systemfolder))
             else:
                 newname = uuid.uuid4()
-                print 'change the name of the old %s folder to %s' % (options.systemfolder, newname)
-                getattr(user.store, options.systemfolder).mapiobj.SetProps([SPropValue(PR_DISPLAY_NAME, str(newname))])
+                print 'change the name of the old %s folder to %s' % (options.systemfolder, newname.decode('utf-8'))
+                getattr(user.store, options.systemfolder).mapiobj.SetProps([SPropValue(PR_DISPLAY_NAME, newname.decode('utf-8'))])
                 getattr(user.store, options.systemfolder).mapiobj.SaveChanges(KEEP_OPEN_READWRITE)
 
 
@@ -96,7 +96,7 @@ def main():
             user.store.root.mapiobj.SaveChanges(KEEP_OPEN_READWRITE)
 
         if options.safe and not options.create:
-            print '\n\nEntryid of old %s folder :%s\nNew name is:%s' % (oldname, oldid, newname)
+            print '\n\nEntryid of old %s folder :%s\nNew name is:%s' % (oldname.decode('utf-8'), oldid, newname.decode('utf-8'))
 
 
 if __name__ == "__main__":
