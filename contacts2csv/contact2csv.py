@@ -2,14 +2,20 @@
 # -*- coding: utf-8 -*-
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
 
-import kopano
+
 import sys
+try:
+    import kopano
+except ImportError:
+    if sys.version_info >= (3,0):
+        print('please install python3-kopano')
+        exit(1)
+    import zarafa as kopano
 import csv
 from MAPI.Util import *
 import MAPI.Util
 import MAPI.Time
 import time
-import pickle
 from datetime import datetime
 import os
 
@@ -47,7 +53,6 @@ def opt_args():
     parser.add_option("--purge", dest="purge", action="store_true", help="Purge contacts before the import")
     parser.add_option("--progressbar", dest="progressbar", action="store_true", help="Show progressbar ")
     parser.add_option("--public", dest="public", action="store_true", help="Run script for public store")
-
     return parser.parse_args()
 
 
@@ -55,8 +60,8 @@ def progressbar(count):
     try:
         from progressbar import Bar, AdaptiveETA, Percentage, ProgressBar
     except ImportError:
-        print '''Please download the progressbar library from https://github.com/niltonvolpato/python-progressbar or
-        run without the --progressbar parameter'''
+        print('Please download the progressbar library from https://github.com/niltonvolpato/python-progressbar or '
+              'run without the --progressbar parameter')
         sys.exit(1)
     widgets = [Percentage(),
                ' ', Bar(),
@@ -87,7 +92,8 @@ def getprop(item, myprop):
 def main():
     options, args = opt_args()
     if not options.user and not options.public:
-        sys.exit('Please use:\n %s --user <username>  ' % (sys.argv[0]))
+        print('Please use:\n {} --user <username>  '.format(sys.argv[0]))
+        sys.exit(1)
     contactsarray = []
 
     if options.public and not options.folder:
@@ -100,7 +106,7 @@ def main():
     else:
         user =  server.user(options.user).name
         store = server.user(options.user).store
-    print 'running script for \'%s\'' % user
+    print('running script for \'{}\'').format(user)
     if options.delimiter:
         delimiter = options.delimiter
     else:
@@ -112,7 +118,7 @@ def main():
             contacts = store.contacts
         if options.progressbar:
             pbar = progressbar(contacts.count * 2)
-        print 'export contacts'
+        print('export contacts')
         itemcount = 0
         for contact in contacts.items():
             if options.progressbar:
@@ -155,7 +161,7 @@ def main():
                  getprop(contact, extra['PR_PRIVATE'])])
 
             itemcount += 1
-        resultFile = open("%s_contacts.csv" % user, 'w')
+        resultFile = open("{}_contacts.csv".format(user), 'w')
         wr = csv.writer(resultFile, delimiter=delimiter)
 
         wr.writerow(['PR_SUBJECT', 'PR_DISPLAY_NAME', 'PR_GENERATION', 'PR_GIVEN_NAME', 'PR_BUSINESS_TELEPHONE_NUMBER',
@@ -221,7 +227,7 @@ def main():
                             new_item.mapiobj.SetProps([SPropValue(getattr(MAPI.Util,headers[num]), value)])
                         new_item.mapiobj.SaveChanges(KEEP_OPEN_READWRITE)
                 try:
-                    address = '%s\n%s\n%s\n%s\n' % (
+                    address = '{}\n{}\n{}\n{}\n'.format(
                         new_item.prop(extra['PR_ADDRESS']).value, new_item.prop(extra['PR_CITY']).value,
                         new_item.prop(extra['PR_STATE']).value, new_item.prop(extra['PR_COUNTRY']).value)
                     new_item.mapiobj.SetProps([SPropValue(2160787487, u'%s' % address)])
