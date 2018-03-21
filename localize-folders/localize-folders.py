@@ -1,22 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
-#
+import sys
 import gettext
 import kopano
 import locale
-import sys
 from MAPI.Util import *
 
 
 def opt_args():
     parser = kopano.parser('skpfucm')
-
     parser.add_option("--lang", dest="lang", action="store", help="A <lang> could be: nl_NL.UTF-8")
     parser.add_option("--reset", dest="reset", action="store_true", help="Reset the folder names to Default English")
     parser.add_option("--dry-run", dest="dryrun", action="store_true", help="Run script without making modifications")
     parser.add_option("--verbose", dest="verbose", action="store_true", help="Run script with output")
-
     return parser.parse_args()
 
 
@@ -80,11 +77,11 @@ def main():
 
     trans = translate(options.lang, options.reset)
     for user in kopano.Server(options).users(options.users):
-        print user.name
+        print 'Localizing user: %s' % user.name.decode('utf-8')
         if options.reset:
-            print '%s: Changing localized folder names to \"en_GB.UTF-8\"' % user.name.decode('utf-8')
+            print 'Changing localized folder names to \"en_GB.UTF-8\"'
         else:
-            print '%s: Changing localized folder names to \"%s\"' % (user.name.decode('utf-8'), options.lang)
+            print 'Changing localized folder names to \"%s\"' % options.lang
 
         if options.verbose:
             print 'Running in verbose mode'
@@ -100,16 +97,13 @@ def main():
 
             localizedname = trans[mapifolder]
             if options.verbose or options.dryrun:
-                print 'Changing MAPI "%s" -> Renaming "%s" to "%s"' % (mapifolder.decode('utf-8'), folderobject.name.decode('utf-8'), localizedname.decode('utf-8'))
+                print 'Changing MAPI "%s" -> Renaming "%s" to "%s"' % (
+                    mapifolder.decode('utf-8'), folderobject.name.decode('utf-8'), localizedname.decode('utf-8'))
             if not options.dryrun:
                 try:
-                    # Use the old MAPI way as set_value doesn't exist in the master  build
-                    folderobject.mapiobj.SetProps([SPropValue(PR_DISPLAY_NAME, localizedname)])
-                    folderobject.mapiobj.SaveChanges(KEEP_OPEN_READWRITE)
-
-#                    folderobject.prop(PR_DISPLAY_NAME).set_value(localizedname)
-                except MAPI.Struct.MAPIErrorCollision:
-                    print '%s is already being used' % localizedname.decode('utf-8')
+                    folderobject.create_prop(PR_DISPLAY_NAME, localizedname)
+                except Exception as e:
+                    print e
                     sys.exit(1)
 
 
