@@ -53,6 +53,10 @@ def opt_args():
     parser.add_option("--purge", dest="purge", action="store_true", help="Purge contacts before the import")
     parser.add_option("--progressbar", dest="progressbar", action="store_true", help="Show progressbar ")
     parser.add_option("--public", dest="public", action="store_true", help="Run script for public store")
+    parser.add_option("--format", dest="format", action="store", help="Format that is used for display name if"
+                                                                           "entry is empty default:"
+                                                                           "'lastname, firstname, middlename (email)'")
+
     return parser.parse_args()
 
 
@@ -213,28 +217,89 @@ def main():
                 if options.progressbar:
                     pbar.update(itemcount + 1)
                 new_item = contacts.create_item()
+                # Add needed propteries.
+                new_item.mapiobj.SetProps([
+                    SPropValue(0x80D81003, [0]), SPropValue(0x80D90003, 1),
+                ])
+
                 for num in range(0, total, 1):
                     if contact[num]:
                         if headers[num] == 'PR_WEDDING_ANNIVERSARY' or headers[num] == 'PR_BIRTHDAY':
                             datetime_date = datetime.fromtimestamp(int(contact[num][:-2]))
                             value = MAPI.Time.unixtime(time.mktime(datetime_date.timetuple()))
+                        elif headers[num] == 'PR_SENSITIVITY':
+                            value = int(contact[num])
                         else:
                             value = contact[num].decode('utf-8').replace(u'\xa0', u' ')
                         if str(headers[num]) in extra:
-
                             new_item.mapiobj.SetProps([SPropValue(extra[headers[num]], value)])
                         else:
                             new_item.mapiobj.SetProps([SPropValue(getattr(MAPI.Util,headers[num]), value)])
+
                         new_item.mapiobj.SaveChanges(KEEP_OPEN_READWRITE)
+
+                # Business address is formatted from 4 separated properties
+                # Check if they exist and craft the new property
+                business = False
                 try:
-                    address = '{}\n{}\n{}\n{}\n'.format(
-                        new_item.prop(extra['PR_ADDRESS']).value, new_item.prop(extra['PR_CITY']).value,
-                        new_item.prop(extra['PR_STATE']).value, new_item.prop(extra['PR_COUNTRY']).value)
-                    new_item.mapiobj.SetProps([SPropValue(2160787487, u'%s' % address)])
+                    address = new_item.prop(extra['PR_ADDRESS']).value
+                    business = True
+                except kopano.errors.NotFoundError:
+                    address = ''
+                try:
+                    city = new_item.prop(extra['PR_CITY']).value
+                    business = True
+                except kopano.errors.NotFoundError:
+                    city = ''
+                try:
+                    state = new_item.prop(extra['PR_STATE']).value
+                    business = True
+                except kopano.errors.NotFoundError:
+                    state = ''
+                try:
+                    country = new_item.prop(extra['PR_COUNTRY']).value
+                    business = True
+                except kopano.errors.NotFoundError:
+                    country = ''
+                if business:
+                    full_address = '{}\n{}\n{}\n{}\n'.format(address, city,state, country)
+                    new_item.mapiobj.SetProps([SPropValue(2160787487, u'%s' % full_address)])
                     new_item.mapiobj.SaveChanges(KEEP_OPEN_READWRITE)
-                except:
-                    continue
+
+                # prop PR_EMAIL is needed in order to add it to the global addressbook
+
+                # Check if display name is set and add it if needed
+                if not new_item.get_prop(extra['PR_DISPLAY_NAME_FULL']) and \
+                        (new_item.get_prop(extra['PR_MAIL']) or new_item.get_prop(extra['PR_EMAIL'])):
+                    try:
+                        firstname = new_item.prop(PR_GIVEN_NAME).value
+                    except kopano.errors.NotFoundError:
+                        firstname = ''
+                    try:
+                        middlename = new_item.prop(PR_MIDDLE_NAME).value
+                    except kopano.errors.NotFoundError:
+                        middlename = ''
+                    try:
+                        lastname =new_item.prop(PR_SURNAME).value
+                    except kopano.errors.NotFoundError:
+                        lastname = ''
+
+                    if new_item.get_prop(extra['PR_MAIL']):
+                        email = new_item.prop(extra['PR_MAIL']).value
+                        new_item.create_prop(extra['PR_EMAIL'], new_item.prop(extra['PR_MAIL']).value.decode('utf-8'))
+                    else:
+                        email = new_item.prop(extra['PR_EMAIL']).value
+                        new_item.create_prop(extra['PR_MAIL'], new_item.prop(extra['PR_EMAIL']).value.decode('utf-8'))
+
+                    fullname_format = 'lastname, firstname, middlename (email)'
+                    if options.format:
+                        fullname_format = options.format
+                    fullname_format.replace('lastname', lastname).replace('firstname', firstname).replace('middlename', middlename).replace('email', email)
+                    new_item.create_prop(extra['PR_DISPLAY_NAME_FULL'], fullname_format.decode('utf-8'))
+
                 itemcount += 1
+
+
         if options.progressbar:
             pbar.finish()
 
