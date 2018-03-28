@@ -294,7 +294,7 @@ def main():
                     fullname_format = 'lastname, firstname, middlename (email)'
                     if options.format:
                         fullname_format = options.format
-                    fullname_format.replace('lastname', lastname).replace('firstname', firstname).replace('middlename', middlename).replace('email', email)
+                    fullname_format = fullname_format.replace('lastname', lastname).replace('firstname', firstname).replace('middlename', middlename).replace('email', email)
                     new_item.create_prop(extra['PR_DISPLAY_NAME_FULL'], fullname_format.decode('utf-8'))
 
                 itemcount += 1
