@@ -236,7 +236,6 @@ def main():
                         else:
                             new_item.mapiobj.SetProps([SPropValue(getattr(MAPI.Util,headers[num]), value)])
 
-                        new_item.mapiobj.SaveChanges(KEEP_OPEN_READWRITE)
 
                 # Business address is formatted from 4 separated properties
                 # Check if they exist and craft the new property
@@ -264,7 +263,8 @@ def main():
                 if business:
                     full_address = '{}\n{}\n{}\n{}\n'.format(address, city,state, country)
                     new_item.mapiobj.SetProps([SPropValue(2160787487, u'%s' % full_address)])
-                    new_item.mapiobj.SaveChanges(KEEP_OPEN_READWRITE)
+                
+                new_item.mapiobj.SaveChanges(KEEP_OPEN_READWRITE)
 
                 # prop PR_EMAIL is needed in order to add it to the global addressbook
 
