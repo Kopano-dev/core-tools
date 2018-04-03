@@ -1,6 +1,6 @@
 ipf-imap-to-note.py
 =================
-Rewrite the container_class from 'IPF.Imap' to 'IPF.Note'.
+Rewrite the folder container_class from 'IPF.Imap' to 'IPF.Note'.
 
 This makes folders imported through PST (Where Outlook was used as an Imap client) visible again.
  
