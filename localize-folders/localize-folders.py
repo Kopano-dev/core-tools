@@ -98,7 +98,6 @@ def main():
                 folderobject = getattr(user.store, mapifolder)
             except AttributeError as e:
                 print 'Warning: Cannot find MAPI folder %s, error code: %s' % (mapifolder, e)
-                continue
 
             localizedname = trans[mapifolder]
             if options.verbose or options.dryrun:
@@ -108,8 +107,7 @@ def main():
                 try:
                     folderobject.create_prop(PR_DISPLAY_NAME, localizedname)
                 except Exception as e:
-                    print e
-                    sys.exit(1)
+                    print 'Error renaming MAPI folder: "%s" error code "%s"' % (mapifolder, e)
 
 
 if __name__ == "__main__":
