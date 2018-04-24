@@ -217,13 +217,12 @@ def main():
                 if options.progressbar:
                     pbar.update(itemcount + 1)
                 new_item = contacts.create_item()
-                # Add needed propteries.
-                new_item.mapiobj.SetProps([
-                    SPropValue(0x80D81003, [0]), SPropValue(0x80D90003, 1),
-                ])
-
+                show_contacts = [0]
+                email2 = None
+                email3 = None
                 for num in range(0, total, 1):
                     if contact[num]:
+
                         if headers[num] == 'PR_WEDDING_ANNIVERSARY' or headers[num] == 'PR_BIRTHDAY':
                             datetime_date = datetime.fromtimestamp(int(contact[num][:-2]))
                             value = MAPI.Time.unixtime(time.mktime(datetime_date.timetuple()))
@@ -236,6 +235,12 @@ def main():
                         else:
                             new_item.mapiobj.SetProps([SPropValue(getattr(MAPI.Util,headers[num]), value)])
 
+                        if headers[num] == "PR_EMAIL2":
+                            show_contacts.append(1)
+                            new_item.mapiobj.SetProps([SPropValue(extra['PR_DISPLAY_NAME_FULL2'], value)])
+                        if headers[num] == "PR_EMAIL3":
+                            show_contacts.append(2)
+                            new_item.mapiobj.SetProps([SPropValue(extra['PR_DISPLAY_NAME_FULL3'], value)])
 
                 # Business address is formatted from 4 separated properties
                 # Check if they exist and craft the new property
@@ -263,7 +268,12 @@ def main():
                 if business:
                     full_address = '{}\n{}\n{}\n{}\n'.format(address, city,state, country)
                     new_item.mapiobj.SetProps([SPropValue(2160787487, u'%s' % full_address)])
-                
+
+                # Add needed propteries.
+                new_item.mapiobj.SetProps([
+                    SPropValue(0x80D81003, show_contacts), SPropValue(0x80D90003, 1),
+                ])
+
                 new_item.mapiobj.SaveChanges(KEEP_OPEN_READWRITE)
 
                 # prop PR_EMAIL is needed in order to add it to the global addressbook
