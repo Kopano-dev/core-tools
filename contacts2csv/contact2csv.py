@@ -218,8 +218,6 @@ def main():
                     pbar.update(itemcount + 1)
                 new_item = contacts.create_item()
                 show_contacts = [0]
-                email2 = None
-                email3 = None
                 for num in range(0, total, 1):
                     if contact[num]:
 
