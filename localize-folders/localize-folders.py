@@ -1,10 +1,13 @@
-#!/usr/bin/python3
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
-import gettext
-import locale
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import sys
+import gettext
 import kopano
+import locale
 from MAPI.Util import *
 
 
@@ -14,7 +17,12 @@ def opt_args():
     parser.add_option("--reset", dest="reset", action="store_true", help="Reset the folder names to Default English")
     parser.add_option("--dry-run", dest="dryrun", action="store_true", help="Run script without making modifications")
     parser.add_option("--verbose", dest="verbose", action="store_true", help="Run script with output")
-    return parser.parse_args()
+    options, args = parser.parse_args()
+    if not options.lang and not options.reset:
+        print('Usage:\n{} -u <username> --lang <language>'.format(sys.argv[0]))
+        sys.exit(1)
+    else:
+        return options
 
 
 def translate(lang, reset):
@@ -69,13 +77,9 @@ def translate(lang, reset):
 
 
 def main():
-    options, args = opt_args()
-
-    if not options.lang and not options.reset:
-        print('Usage:\n{} -u <username> --lang <language>'.format(sys.argv[0]))
-        sys.exit(1)
-
+    options = opt_args()
     trans = translate(options.lang, options.reset)
+
     for user in kopano.Server(options).users(options.users):
         print('Localizing user: {}'.format(user.name))
         if options.reset:
@@ -97,12 +101,20 @@ def main():
 
             localizedname = trans[mapifolder]
             if options.verbose or options.dryrun:
-                print(
-                    'Renaming MAPI Folder "{}" -> From "{}" To "{}"'.format(mapifolder, folderobject.name, localizedname))
-
+                if sys.version_info[0] > 2:
+                    print(
+                        'Renaming MAPI Folder "{}" -> From "{}" To "{}"'.format(mapifolder, folderobject.name,
+                                                                                localizedname))
+                else:
+                    print(
+                        'Renaming MAPI Folder "{}" -> From "{}" To "{}"'.format(mapifolder, folderobject.name,
+                                                                                localizedname.decode('utf-8')))
             if not options.dryrun:
                 try:
-                    folderobject.create_prop(PR_DISPLAY_NAME, localizedname.encode('utf-8'))
+                    if sys.version_info[0] > 2:
+                        folderobject.create_prop(PR_DISPLAY_NAME, localizedname.encode('utf-8'))
+                    else:
+                        folderobject.create_prop(PR_DISPLAY_NAME, localizedname)
                 except Exception as e:
                     print(e)
                     sys.exit(1)
