@@ -1,8 +1,12 @@
 # resolve-entryid.py
+
 Tries to resolve which item a given entryid is, optionally dumping to an eml as a file, or deleting the item.
 This is not multi server aware.
 
+Requires python 2.7 or higher.
+
 ## Help
+
 ```
 Usage: resolve-entryid.py [options]
 
@@ -18,9 +22,11 @@ Options:
 ```
 
 ## Usage:
+
     python resolve-entryid.py --entryid 0000000036B232938E34485AB84A848127AB7B1A01000000050000001393248EF62F490A8FF798A73B427BA500000000
 
 ## Example output for a calendar item
+
 ```
 Entryid : 0000000036B232938E34485AB84A848127AB7B1A01000000050000001393248EF62F490A8FF798A73B427BA500000000
 Guessed storeid : 36B232938E34485AB84A848127AB7B1A
