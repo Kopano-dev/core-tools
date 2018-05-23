@@ -45,12 +45,9 @@ def contacts(item):
 
 def rest(item):
     md5 = hashlib.md5(item.html)
-    try:
-        md5.update(item.prop(0x0037001E).value)
-    except MAPIErrorNotFound:
-        md5.update(item.subject)
+    if item.subject:
+        md5.update(item.subject.encode('utf-8'))
     md5 = md5.hexdigest()
-
     return md5
 
 
@@ -70,7 +67,7 @@ def main():
                                 if header:
                                     if any(header in checkheader for checkheader in temp):
                                         if options.verbose:
-                                            print('Found Duplicate: %/%s' %
+                                            print('Found Duplicate: %s/%s' %
                                                   (folder.path, item.header('subject')))
                                         if options.modify:
                                             user.store.folder(folder.name).move(
@@ -89,7 +86,7 @@ def main():
                                     try:
                                         if options.verbose:
                                             print('Found Duplicate: %s/%s' %
-                                                  (folder.path, item.prop(0x0037001E).value))
+                                                  (folder.path, item.subject))
                                     except UnicodeEncodeError as e:
                                         print(e)
                                     if options.modify:
