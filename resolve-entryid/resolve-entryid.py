@@ -8,6 +8,7 @@ import kopano
 show_attr = ['server', 'message_class', 'folder', 'subject', 'received', 'created',
              'last_modified', 'size', 'stubbed']
 
+
 def opt_args():
     parser = kopano.parser('uskPpf')
     parser.add_option('--entryid', dest='entryid', help='Entryid to resolve')
@@ -79,7 +80,7 @@ def main():
                         except Exception as e:
                             print('{}'.format(e))
                         else:
-                            print('{} was deleted'.format({options.entryid}))
+                            print('{} was deleted'.format(options.entryid))
 
 
 if __name__ == '__main__':
