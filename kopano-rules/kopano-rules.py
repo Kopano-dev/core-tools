@@ -1,48 +1,286 @@
-#!/usr/bin/env python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
 #
-try:
-    import kopano
-except ImportError:
-    import zarafa as kopano
-    print 'Script is not tested with Zarafa \nError handling will not work correctly'
+
+import kopano
 from MAPI.Util import *
 import sys
 import binascii
-from terminaltables import AsciiTable
+from tabulate import tabulate
 from datetime import datetime
 import time
-
+try:
+    import simplejson as json
+except ImportError:
+    import json
+import re
 
 def opt_args():
-    parser = kopano.parser('skpc')
+    parser = kopano.parser('skpcUPv')
     parser.add_option("--user", dest="user", action="store", help="Run script for user ")
     parser.add_option("--list", dest="printrules", action="store_true", help="Print rules")
     parser.add_option("--rule", dest="rule", action="store", type="int", help="rule id")
     parser.add_option("--state", dest="state", action="store", help="enable, disable, delete, create")
     parser.add_option("--create", dest="createrule", action="store",
                       help="create rule, use  --conditions and --actions")
-    parser.add_option("--conditions", dest="conditions", action="store", help="conditions")
-    parser.add_option("--actions", dest="actions", action="store", help="actions")
-    parser.add_option("--exceptions", dest="exceptions", action="store", help="exceptions")
+    parser.add_option("--conditions", dest="conditions", action="append", default=[], help="conditions")
+    parser.add_option("--actions", dest="actions", action="append", default=[],help="actions")
+    parser.add_option("--exceptions", dest="exceptions", action="append", default=[], help="exceptions")
+    parser.add_option("--import-exchange-rules", dest="importFile", action="store", help="Json file from exchange")
 
     return parser.parse_args()
+
+
+class KopanoRules():
+    def __init__(self, conditions):
+        self.server = server
+        self.conditions = conditions
+
+    def _get_email(self, user):
+        if options.importFile:
+            users = re.findall('"([^"]*)"', user)
+            if len(users) > 0:
+
+                user = users[0]
+        try:
+            username = self.server.user(email=user)
+            check = True
+        except kopano.NotFoundError:
+            check = False
+
+        if check:
+            self.mail = 'ZARAFA:%s' % user.upper()
+            self.fromname = u'%s <%s>' % (username.name, user)
+            self.name = username.name
+            self.entryid = username.userid
+            self.protocol = u'ZARAFA'
+            self.fullname = username.fullname
+        else:
+            self.mail = 'SMTP:%s' % user.upper()
+            self.fromname = u'%s <%s>' % (user, user)
+            self.fullname = user
+            self.name = user
+            self.entryid = binascii.hexlify(self.mail.encode('utf-8'))  # XXXX can be broken.
+            self.protocol = u'SMTP'
+
+    def received_from(self):
+        user_list = []
+        for user in self.conditions:
+            self._get_email(user)
+            user_list.append(SCommentRestriction(
+                        SPropertyRestriction(4, 0xc1d0102, SPropValue(0x00010102, self.mail.encode('utf-8'))),
+                        [SPropValue(0x60000003, 1), SPropValue(0x00010102, self.mail.encode('utf-8')),
+                         SPropValue(0x0001001F, self.fromname), SPropValue(0x39000003, 0)]))
+
+        return user_list
+
+    def sent_to(self):
+        user_list  = []
+        for user in self.conditions:
+            self._get_email(user)
+            user_list.append(SSubRestriction(0xe12000d, SCommentRestriction(
+                        SPropertyRestriction(4, 0x300b0102, SPropValue(0x00010102, self.mail.encode('utf-8'))),
+                        [SPropValue(0x60000003, 1), SPropValue(0x00010102, self.mail.encode('utf-8')),
+                         SPropValue(0x0001001F, self.fromname), SPropValue(0x39000003, 0)])))
+        return user_list
+
+    def importance(self):
+        importancevalue = {"low": 0,
+                           "normal": 1,
+                           "high": 2}
+        getlevel = importancevalue[self.conditions[0].lower()]
+        return SPropertyRestriction(4, 0x170003, SPropValue(0x00170003, getlevel))
+
+
+    def sent_only_to_me(self):
+        return SAndRestriction([SPropertyRestriction(4, 0x57000b, SPropValue(0x0057000B, True)),
+                                                SNotRestriction(SContentRestriction(1, 0xe04001f,
+                                                                                    SPropValue(0x0E04001F, u';'))),
+                                                SPropertyRestriction(4, 0xe03001f, SPropValue(0x0E03001F, u''))])
+
+    def contain_word_sender_address(self):
+        return_list = []
+        for word in self.conditions:
+                return_list.append(SContentRestriction(1, 0xc1d0102, SPropValue(0x0C1D0102, u'{}'.format(word))))
+        return return_list
+
+    def contain_word_in_subject(self):
+        return_list = []
+        for word in self.conditions:
+            return_list.append(SContentRestriction(65537, 0x37001f, SPropValue(0x0037001F, u'{}'.format(word))))
+        return return_list
+
+    def contain_word_in_body(self):
+        return_list = []
+        for word in self.conditions:
+            return_list.append(SContentRestriction(65537, 0x1000001f, SPropValue(0x1000001F, u'{}'.format(word))))
+        return return_list
+
+    def contain_word_in_header(self):
+        return_list = []
+        for word in self.conditions:
+            return_list.append(SContentRestriction(65537, 0x7d001f, SPropValue(0x007D001F, u'{}'.format(word))))
+        return return_list
+
+    def message_size(self):
+        if self.conditions[0] <= self.conditions[1]:
+            lowvalue = self.conditions[0]
+            highvalue = self.conditions[1]
+        else:
+            lowvalue = self.conditions[1]
+            highvalue = self.conditions[0]
+
+        return SAndRestriction([SPropertyRestriction(2, 0xe080003, SPropValue(0x0E080003, int(lowvalue) * 10)),
+                                SPropertyRestriction(0, 0xe080003, SPropValue(0x0E080003, int(highvalue) * 10))])
+
+    def received_date(self, exception=False):
+        date1 = MAPI.Time.unixtime(time.mktime(datetime.strptime(self.conditions[0], '%d-%m-%Y').timetuple()))
+        date2 = MAPI.Time.unixtime(time.mktime(datetime.strptime(self.conditions[1], '%d-%m-%Y').timetuple()))
+        if date1 <= date2:
+            datelow = date1
+            datehigh = date2
+        else:
+            datelow = date2
+            datehigh = date1
+        if exception:
+            return SAndRestriction([SNotRestriction(SOrRestriction([
+                SContentRestriction(65538,0x1a001f,SPropValue(0x001A001F, u'IPM.Schedule.Meeting.Request')),
+                SContentRestriction(65538,0x1a001f,SPropValue(0x001A001F, u'IPM.Schedule.Meeting.Canceled'))]
+            ))])
+
+        return SAndRestriction([SPropertyRestriction(2, 0xe060040, SPropValue(0x0E060040, datelow)),
+                                SPropertyRestriction(0, 0xe060040, SPropValue(0x0E060040, datehigh))])
+
+    def name_in_to_cc(self):
+        return SPropertyRestriction(4, 0x59000b, SPropValue(0x0059000B, True))
+
+    def name_in_to(self):
+        return SPropertyRestriction(4, 0x57000b, SPropValue(0x0057000B, False))
+
+    def name_in_cc(self):
+        return SAndRestriction([SPropertyRestriction(4,0x57000b,SPropValue(0x0057000B, True)),
+                                SNotRestriction(SContentRestriction(1,0xe04001f,SPropValue(0x0E04001F, u';'))),
+                                SPropertyRestriction(4,0xe03001f,SPropValue(0x0E03001F, u''))])
+
+    def only_sent_to_me(self):
+        return SAndRestriction([SPropertyRestriction(4,0x57000b,SPropValue(0x0057000B, True)),
+                                SNotRestriction(SContentRestriction(1,0xe04001f,SPropValue(0x0E04001F, u';'))),
+                                SPropertyRestriction(4,0xe03001f,SPropValue(0x0E03001F, u''))])
+
+    def has_attachment(self):
+        return SBitMaskRestriction(1, 0xe070003, 16)
+
+    def sensitivity(self):
+        sens = {'normal': 0,
+                'personal': 1,
+                'private': 2,
+                'confidential': 3,
+                'companyconfidential': 3
+        }
+
+        return SPropertyRestriction(4, 0x360003, SPropValue(0x00360003, sens[self.conditions[0].lower()]))
+
+    def meeting_request(self):
+        return SOrRestriction(
+            [SContentRestriction(65538,0x1a001f,SPropValue(0x001A001F, u'IPM.Schedule.Meeting.Request')),
+             SContentRestriction(65538,0x1a001f,SPropValue(0x001A001F, u'IPM.Schedule.Meeting.Canceled'))]
+        )
+
+    def _forward_redirect_users(self):
+        user_list = []
+        for user in self.conditions:
+            self._get_email(user)
+            user_list.append([SPropValue(0x0FFF0102,
+                                           binascii.unhexlify(self.entryid)),
+                                SPropValue(0x0FFE0003, 6), SPropValue(0x3001001F, u'%s' % self.fullname),
+                                SPropValue(0x39000003, 0), SPropValue(0x3003001F, u'%s' % self.name),
+                                SPropValue(0x39FE001F, u'%s' % user), SPropValue(0x3002001F, self.protocol),
+                                SPropValue(0x0C150003, 1), SPropValue(0x300B0102, self.mail.encode('utf-8'))])
+
+        return user_list
+
+    def forward_to(self):
+        user_list = self._forward_redirect_users()
+        if len(user_list) > 0:
+            return ACTION(7, 0, None, None, 0x0, actFwdDelegate(user_list))
+
+    def redirect_to(self):
+        user_list = self._forward_redirect_users()
+        if len(user_list) > 0:
+            return ACTION(7, 0, None, None, 0x0, actFwdDelegate(user_list))
+
+    def forward_as_attachment(self):
+
+        user_list = self._forward_redirect_users()
+        if len(user_list) > 0:
+            return ACTION(7, 0, None, None, 0x0, actFwdDelegate(user_list))
+
+    def _get_folder(self):
+        try:
+            self.user = server.user(self.conditions[1])
+        except kopano.NotFoundError:
+            print("user '{}' not found".format(self.conditions[1]))
+            sys.exit(1)
+        except IndexError:
+            self.user = server.user(options.user)
+
+        folders = self.conditions[0].split('/')
+        num = 0
+        for searchfolder in folders:
+            try:
+                if num == 0:
+                    self.folder = self.user.store.folder(searchfolder)
+                else:
+                    self.folder = self.folder.folder(searchfolder)
+                num += 1
+            except kopano.NotFoundError:
+                print("Folder '{}' does not exist".format(searchfolder))
+                sys.exit(1)
+
+    def move_to(self):
+        self._get_folder()
+        return ACTION(1, 0, None, None, 0x0, actMoveCopy(binascii.unhexlify(self.user.store.entryid),
+                                                         binascii.unhexlify(self.folder.entryid)))
+
+    def copy_to(self):
+        self._get_folder()
+        return ACTION(2, 0, None, None, 0x0, actMoveCopy(binascii.unhexlify(self.user.store.entryid),
+                                                         binascii.unhexlify(self.folder.entryid)))
+    def delete(self):
+        user_store = self.server.user(options.user).store
+        wastebasket = user_store.wastebasket.entryid
+        return ACTION(1, 0, None, None, 0x0, actMoveCopy(binascii.unhexlify(user_store.entryid),
+                                                         binascii.unhexlify(wastebasket)))
+    def mark_as_read(self):
+        return ACTION(11, 0, None, None, 0x0, None)
+
+    def mark_as_junk(self):
+        user_store = self.server.user(options.user).store
+        junk = user_store.junk.entryid
+        return ACTION(1, 0, None, None, 0x0, actMoveCopy(binascii.unhexlify(user_store.entryid),
+                                                         binascii.unhexlify(junk)))
+    def mark_as_importance(self):
+        importance = {'low': 0,
+                      'normal': 1,
+                      'high': 2}
+        return ACTION(9, 0, None, None, 0x0, SPropValue(PR_IMPORTANCE, importance[self.conditions[0].lower()]))
+
 
 def convertcondition(conditions):
     condition_message = ''
     conlist = []
     totalnum = 0
     messagelist = []
-
     try:
         conditions = conditions.lpRes
         totalconditions = len(conditions.lpRes)
     except AttributeError:
         conditions = conditions
         try:
+            # print(conditions)
             totalconditions = len(conditions)
-        except AttributeError:
+        except (AttributeError, TypeError):
             conditions = [conditions]
             totalconditions = len(conditions)
     for condition in conditions:
@@ -85,7 +323,7 @@ def convertcondition(conditions):
                         try:
                             condition_message += "%s \n" % condition.lpProp.Value
                         except AttributeError as e:
-                            print e, condition
+                            print(e, condition)
 
                 numaddress += 1
                 if numaddress != totaladdresses and totaladdresses != 1:
@@ -168,9 +406,9 @@ def convertcondition(conditions):
                 conlist.append(proptag)
                 if proptag == '0xc1d0102':
                     condition_message += "Is received from: "
-            condition_message += "%s \n"  % condition.lpRes.lpProp.Value.replace('ZARAFA:', '').replace('SMTP:', '').lower()
-        # multiple values
+            condition_message += "{} \n".format(condition.lpRes.lpProp.Value.decode('utf-8').replace('ZARAFA:', '').replace('SMTP:', '').lower())
 
+        # multiple values
         if isinstance(condition, SAndRestriction):
             for andcon in condition.lpRes:
                 if isinstance(andcon, SPropertyRestriction):
@@ -318,13 +556,13 @@ def convertaction(action, user,server):
     try:
         countact = len(action.Value.lpAction)
     except AttributeError:
-	return 'Unknown  action'
+        return 'Unknown  action'
 
 
     num = 0
     for act in action.Value.lpAction:
         if isinstance(act.actobj, actDeferAction):
-	    action_message += 'Deferred  action (client side rule)'
+            action_message += 'Deferred  action (client side rule)'
         if isinstance(act.actobj, actMoveCopy):
             folderid = binascii.hexlify(act.actobj.FldEntryId)
             storeid = act.actobj.StoreEntryId
@@ -334,18 +572,18 @@ def convertaction(action, user,server):
                 except TypeError:
                     foldername = user.store.folder(folderid).name
             except kopano.NotFoundError:
-		try:
-  	            mapistore = server.mapisession.OpenMsgStore(0, storeid, IID_IMsgStore, MDB_WRITE)
-        	    newstore = kopano.Store(mapiobj=mapistore, server=server)
-			
+                try:
+                    mapistore = server.mapisession.OpenMsgStore(0, storeid, IID_IMsgStore, MDB_WRITE)
+                    newstore = kopano.Store(mapiobj=mapistore, server=server)
+
                     try:
                         foldername = '%s (%s)' % (newstore.folder(entryid=folderid).name, newstore.user.name)
                     except TypeError:
                         foldername = '%s (%s)' % (newstore.folder(folderid).name, newstore.user.name)
-		    except AttributeError:
-			foldername = 'Folder not available'
-		except MAPI.Struct.MAPIErrorNotFound:
-		    foldername = 'unknown'
+                except AttributeError:
+                    foldername = 'Folder not available'
+                except MAPI.Struct.MAPIErrorNotFound:
+                    foldername = 'unknown'
 
 
             if act.acttype == 1:
@@ -387,25 +625,21 @@ def printrules(filters, user, server):
                  16: "Disabled",
                  17: "Enabled (stop further rules)"}
 
-    table_data = [["Number", "Name", "Condition", "Action", "State"]]
+    table_header = ["Number", "Name", "Condition", "Action", "State"]
+    table_data = []
     for rule in filters:
         condition_message = convertcondition(rule[4].Value)
         actions = convertaction(rule[5], user,server)
-	
         name = rule[7].Value
-        if not isinstance(condition_message, unicode):
-            condition = unicode(condition_message, encoding='ISO-8859-1')
-        else:
-            condition = condition_message
+        condition = condition_message
         try:
             table_data.append(
-                [rule[0].Value, name, condition, unicode(actions),
-                unicode(rulestate[rule[2].Value])])
+                [rule[0].Value, name, condition, actions,
+                rulestate[rule[2].Value]])
         except KeyError:
             continue
 
-    table = AsciiTable(table_data)
-    print table.table
+    print(tabulate(table_data, headers=table_header,tablefmt="grid"))
 
 
 def changerule(filters, number, state):
@@ -453,20 +687,35 @@ def changerule(filters, number, state):
 
 
 def createrule(options, lastid):
+    '''
+    Create kopano rule based on given options
+    :param options: dict with the following keys:
+        user: User where this rule applies to 
+        createrule: name of the rule
+        actions: list of actions of this rule
+        conditions: list of conditions of this rule
+        exceptions: list of exceptions of this rule
+    :param lastid: last rule id that is knonw    
+    :return: 
+    '''
     try:
-        conditions = options.conditions.split(';')
+        conditions = options.conditions
     except AttributeError:
         conditions = []
-    actions = options.actions.split(';')
+    actions = options.actions
     try:
-        exceptions = options.exceptions.split(';')
+        exceptions = options.exceptions
     except AttributeError:
         exceptions = []
-    server = kopano.Server(options)
     storeconditions = []
     storeactions = []
     storeexceptions = []
 
+    SOrRestriction_list = ['received-from', 'sent-to', 'contain-word-sender-address', 'contain-word-in-subject',
+                           'contain-word-in-body', 'contain-word-in-header']
+    '''
+    Search for conditions that are known Kopano rules   conditions
+    '''
     for condition in conditions:
         conditionslist = []
         splitcondition = condition.split(':')
@@ -475,208 +724,58 @@ def createrule(options, lastid):
             condition_var = splitcondition[1].split(',')
         except IndexError:
             condition_var = ''
+        rules = KopanoRules(condition_var)
 
-        if condition_rule == 'received-from' or condition_rule == 'sent-to':
-            for user in condition_var:
-                try:
-                    username = server.user(email=user)
-                    check = True
-                except kopano.NotFoundError:
-                    check = False
 
-                if check:
-                    frommail = 'ZARAFA:%s' % user.upper()
-                    fromname = u'%s <%s>' % (username.name, user)
-                else:
-                    frommail = 'SMTP:%s' % user.upper()
-                    fromname = u'%s <%s>' % (user, user)
-                if condition_rule == 'received-from':
-                    conditionslist.append(SCommentRestriction(
-                        SPropertyRestriction(4, 0xc1d0102, SPropValue(0x00010102, '%s\x00' % frommail)),
-                        [SPropValue(0x60000003, 1L), SPropValue(0x00010102, '%s\x00' % frommail),
-                         SPropValue(0x0001001F, fromname), SPropValue(0x39000003, 0L)]))
+        '''
+        Try to get the attribute based on parameter. 
+        if they don't exist just print the unknown attribute and continue
+        '''
+        try:
+            condition_method = getattr(rules, condition_rule.replace('-', '_'))
+            conditionslist.append(condition_method())
+        except AttributeError as e:
+            print('the Following Attribute is not known "{}"'.format(e))
 
-                if condition_rule == 'sent-to':
-                    conditionslist.append(SSubRestriction(0xe12000d, SCommentRestriction(
-                        SPropertyRestriction(4, 0x300b0102, SPropValue(0x00010102, '%s\x00' % frommail)),
-                        [SPropValue(0x60000003, 1L), SPropValue(0x00010102, '%s\x00' % frommail),
-                         SPropValue(0x0001001F, fromname), SPropValue(0x39000003, 0L)])))
-
+        '''
+            If the condition_rule is higher then 1 add the SOrRestriction attribute before the list 
+        '''
+        if condition_rule in SOrRestriction_list:
             if len(conditionslist) > 1:
-                storeconditions.append(SOrRestriction(conditionslist))
-            else:
-                storeconditions.append(conditionslist[0])
+                storeconditions.append(SOrRestriction(conditionslist[0]))
+            elif len(conditionslist) == 1:
+                storeconditions.append(conditionslist[0][0])
+        elif len(conditionslist) == 1:
+            storeconditions.append(conditionslist[0])
 
-
-        if condition_rule == 'importance':
-            importancevalue = {"low": 0,
-                               "normal": 1,
-                               "high": 2}
-            getlevel = importancevalue[condition_var[0].lower()]
-            storeconditions.append(SPropertyRestriction(4, 0x170003, SPropValue(0x00170003, getlevel)))
-
-
-        if condition_rule == 'sent-only-to-me':
-            storeconditions.append(SAndRestriction([SPropertyRestriction(4, 0x57000b, SPropValue(0x0057000B, True)),
-                                                    SNotRestriction(SContentRestriction(1, 0xe04001f,
-                                                                                        SPropValue(0x0E04001F, u';'))),
-                                                    SPropertyRestriction(4, 0xe03001f, SPropValue(0x0E03001F, u''))])
-                                   )
-
-        if condition_rule == 'contain-word-sender-address' or condition_rule == 'contain-word-in-subject' \
-                or condition_rule == 'contain-word-in-body' or condition_rule == 'contain-word-in-header':
-            for word in condition_var:
-                if condition_rule == 'contain-word-sender-address':
-                    conditionslist.append(
-                        SContentRestriction(1, 0xc1d0102, SPropValue(0x0C1D0102, word.decode('utf8').encode('ISO-8859-1'))))
-                if condition_rule == 'contain-word-in-subject':
-                    conditionslist.append(
-                        SContentRestriction(65537, 0x37001f, SPropValue(0x0037001F, word.decode('utf8'))))
-                if condition_rule == 'contain-word-in-body':
-                    conditionslist.append(
-                        SContentRestriction(65537, 0x1000001f, SPropValue(0x1000001F, word.decode('utf8'))))
-                if condition_rule == 'contain-word-in-header':
-                    conditionslist.append(
-                        SContentRestriction(65537, 0x7d001f, SPropValue(0x007D001F, word.decode('utf8'))))
-
-            if len(conditionslist) > 1:
-                storeconditions.append(SOrRestriction(conditionslist))
-            else:
-                storeconditions.append(conditionslist[0])
-
-        if condition_rule == 'message-size':
-            if condition_var[0] <= condition_var[1]:
-                lowvalue = condition_var[0]
-                highvalue= condition_var[1]
-            else:
-                lowvalue = condition_var[1]
-                highvalue= condition_var[0]
-
-            storeconditions.append(SAndRestriction([SPropertyRestriction(2,0xe080003,SPropValue(0x0E080003, int(lowvalue) *10)),
-                                                                    SPropertyRestriction(0,0xe080003,SPropValue(0x0E080003, int(highvalue) *10))]))
-        if condition_rule == 'received-date':
-            date1 = MAPI.Time.unixtime(time.mktime(datetime.strptime(condition_var[0], '%d-%m-%Y').timetuple()))
-            date2 = MAPI.Time.unixtime(time.mktime(datetime.strptime(condition_var[1], '%d-%m-%Y').timetuple()))
-            if date1 <= date2:
-                datelow = date1
-                datehigh = date2
-            else:
-                datelow = date2
-                datehigh = date1
-            storeconditions.append(SAndRestriction([SPropertyRestriction(2,0xe060040,SPropValue(0x0E060040, datelow)),
-                                                                    SPropertyRestriction(0,0xe060040,SPropValue(0x0E060040, datehigh))]))
-        if condition_rule == 'name-in-to-or-cc':
-            storeconditions.append(SPropertyRestriction(4,0x59000b,SPropValue(0x0059000B, True)))
-        if condition_rule == 'name-in-to':
-            storeconditions.append(SPropertyRestriction(4,0x57000b,SPropValue(0x0057000B, False)))
-        if condition_rule == 'name-in-cc':
-            storeconditions.append(
-                SAndRestriction([SPropertyRestriction(4,0x58000b,SPropValue(0x0058000B, True)),
-                                                 SPropertyRestriction(4,0x59000b,SPropValue(0x0059000B, True)),
-                                                 SPropertyRestriction(4,0x57000b,SPropValue(0x0057000B, False))]))
-        if condition_rule == 'only-sent-to-me':
-            storeconditions.append(SAndRestriction([SPropertyRestriction(4,0x57000b,SPropValue(0x0057000B, True)),
-                                                   SNotRestriction(SContentRestriction(1,0xe04001f,SPropValue(0x0E04001F, u';'))),
-                                                   SPropertyRestriction(4,0xe03001f,SPropValue(0x0E03001F, u''))]))
-        if condition_rule == 'has-attachment':
-            storeconditions.append(SBitMaskRestriction(1,0xe070003,16))
-        if condition_rule == 'sensitivity':
-            sens = {'normal': 0,
-                    'personal': 1,
-                    'private': 2,
-                    'confidential': 3}
-            storeconditions.append(SPropertyRestriction(4,0x360003,SPropValue(0x00360003, sens[condition_var[0].lower()])))
-        if condition_rule == 'meeting-request':
-            storeconditions.append(SOrRestriction([
-                SContentRestriction(65538,0x1a001f,SPropValue(0x001A001F, u'IPM.Schedule.Meeting.Request')),
-                SContentRestriction(65538,0x1a001f,SPropValue(0x001A001F, u'IPM.Schedule.Meeting.Canceled'))
-                ]))
-
-    # action part
+    '''
+    Search for actions that are known Kopano rules actions
+    '''
     for action in actions:
         splitactions = action.split(':')
         action_rule = splitactions[0]
-        if not action_rule == 'delete':
+        print(len(splitactions))
+        if len(splitactions) > 1:
             action_var = splitactions[1].split(',')
-        actionslist = []
+        else:
+            action_var = splitactions[0]
+        '''
+        Try to get the attribute based on parameter. 
+        if they don't exist just print the unknown attribute and continue
+        '''
+        rules = KopanoRules(action_var)
+        try:
+            action_method = getattr(rules, action_rule.replace('-', '_'))
+            tmp = action_method()
+            if tmp:
+                storeactions.append(tmp)
+        except AttributeError as e:
+            print('the Following Attribute is not known "{}"'.format(e))
 
-        if action_rule == 'forward-to' or action_rule == 'redirect-to' or action_rule == 'forward-as-attachment':
-            for user in action_var:
-                try:
-                    username = server.user(email=user)
-                    check = True
-                except kopano.NotFoundError:
-                    check = False
-                if check:
-                    tomail = 'ZARAFA:%s' % user.upper()
-                    fullname = username.fullname
-                    name = username.name
-                    entryid = username.userid
-                    protocol = u'ZARAFA'
-                else:
-                    tomail = 'SMTP:%s' % user.upper()
-                    fullname = user
-                    name = user
-                    entryid = binascii.hexlify(tomail)  # XXXX can be broken.
-                    protocol = u'SMTP'
-
-                actionslist.append([SPropValue(0x0FFF0102,
-                                               binascii.unhexlify(entryid)),
-                                    SPropValue(0x0FFE0003, 6L), SPropValue(0x3001001F, u'%s' % fullname),
-                                    SPropValue(0x39000003, 0L), SPropValue(0x3003001F, u'%s' % name),
-                                    SPropValue(0x39FE001F, u'%s' % user), SPropValue(0x3002001F, protocol),
-                                    SPropValue(0x0C150003, 1L), SPropValue(0x300B0102, '%s\x00' % tomail)])
-
-
-                if action_rule == 'forward-to':
-                    if len(actionslist) > 0:
-                        storeactions.append(ACTION(7, 0, None, None, 0x0, actFwdDelegate(actionslist)))
-
-                if action_rule == 'redirect-to':
-                    if len(actionslist) > 0:
-                        storeactions.append(ACTION(7, 3, None, None, 0x0, actFwdDelegate(actionslist)))
-
-                if action_rule == 'forward-as-attachment':
-                    if len(actionslist) > 0:
-                        storeactions.append(ACTION(7, 4, None, None, 0x0, actFwdDelegate(actionslist)))
-
-
-        if action_rule == 'move-to' or action_rule == 'copy-to' or action_rule == 'delete':
-            if not action_rule == 'delete':
-                try:
-                    user = server.user(action_var[1])
-                except kopano.NotFoundError:
-                    print "user '%s' not found" % action_var[1]
-                    sys.exit()
-                except IndexError:
-                    user = server.user(options.user)
-
-                folders = action_var[0].split('/')
-                num = 0
-                for searchfolder in folders:
-                    try:
-                        if num == 0:
-                            getfolder = user.store.folder(searchfolder)
-                        else:
-                            getfolder = getfolder.folder(searchfolder)
-                        num += 1
-                    except kopano.NotFoundError:
-                        print "Folder '%s' does not exist" % searchfolder
-                        sys.exit()
-            else:
-                user = server.user(options.user)
-            if action_rule == 'move-to':
-                storeactions.append(ACTION(1, 0, None, None, 0x0, actMoveCopy(binascii.unhexlify(user.store.entryid),
-                                                                              binascii.unhexlify(getfolder.entryid))))
-            if action_rule == 'copy-to':
-                storeactions.append(ACTION(2, 0, None, None, 0x0, actMoveCopy(binascii.unhexlify(user.store.entryid),
-                                                                              binascii.unhexlify(getfolder.entryid))))
-            if action_rule == 'delete':
-                storeactions.append(ACTION(1, 0, None, None, 0x0, actMoveCopy(binascii.unhexlify(user.store.entryid),
-                                                                              binascii.unhexlify(
-                                                                                  user.store.wastebasket.entryid))))
-
-    #exception part
+    '''
+    Search for exceptions that are known Kopano rules exceptions
+    same as conditions with the differents that the SNotRestriction attibute is added to the rule 
+    '''
     for exception in exceptions:
         splitexception = exception.split(':')
         exception_rule = splitexception[0]
@@ -685,106 +784,30 @@ def createrule(options, lastid):
         except IndexError:
             exception_var = ''
         exceptionslist = []
-
-        if exception_rule == 'name-in-to-or-cc':
-            storeexceptions.append(SNotRestriction(SPropertyRestriction(4,0x59000b,SPropValue(0x0059000B, True))))
-        if exception_rule == 'name-in-to':
-            storeexceptions.append(SNotRestriction(SPropertyRestriction(4,0x57000b,SPropValue(0x0057000B, False))))
-        if exception_rule == 'name-in-cc':
-            storeexceptions.append(
-                SNotRestriction(SAndRestriction([SPropertyRestriction(4,0x58000b,SPropValue(0x0058000B, True)),
-                                                 SPropertyRestriction(4,0x59000b,SPropValue(0x0059000B, True)),
-                                                 SPropertyRestriction(4,0x57000b,SPropValue(0x0057000B, False))])))
-        if exception_rule == 'only-sent-to-me':
-            storeexceptions.append(SNotRestriction(SAndRestriction([SPropertyRestriction(4,0x57000b,SPropValue(0x0057000B, True)),
-                                                   SNotRestriction(SContentRestriction(1,0xe04001f,SPropValue(0x0E04001F, u';'))),
-                                                   SPropertyRestriction(4,0xe03001f,SPropValue(0x0E03001F, u''))])))
-        if exception_rule == 'has-attachment':
-            storeexceptions.append(SNotRestriction(SBitMaskRestriction(1,0xe070003,16)))
-        if exception_rule == 'sensitivity':
-            sens = {'normal': 0,
-                    'personal': 1,
-                    'private': 2,
-                    'confidential': 3}
-            storeexceptions.append(SNotRestriction(SPropertyRestriction(4,0x360003,SPropValue(0x00360003, sens[exception_var[0].lower()]))))
-        if exception_rule == 'importance':
-            imp = {'low': 0,
-                    'normal': 1,
-                    'high': 2}
-            storeexceptions.append(SNotRestriction(SPropertyRestriction(4,0x170003,SPropValue(0x00170003, imp[exception_var[0].lower()]))))
-        if exception_rule == 'message-size':
-            if exception_var[0] <= exception_var[1]:
-                lowvalue = exception_var[0]
-                highvalue= exception_var[1]
+        rules = KopanoRules(exception_var)
+        '''
+        Try to get the attribute based on parameter. 
+        if they don't exist just print the unknown attribute and continue
+        '''
+        try:
+            exception_method = getattr(rules, exception_rule.replace('-', '_'))
+            if exception_rule == 'meeting_request':
+                exceptionslist.append(exception_method(True))
             else:
-                lowvalue = exception_var[1]
-                highvalue= exception_var[0]
-            storeexceptions.append(SNotRestriction(SAndRestriction([SPropertyRestriction(2,0xe080003,SPropValue(0x0E080003, int(lowvalue) *10)),
-                                                                    SPropertyRestriction(0,0xe080003,SPropValue(0x0E080003, int(highvalue) *10))])))
-        if exception_rule == 'received-date':
-            date1 = MAPI.Time.unixtime(time.mktime(datetime.strptime(exception_var[0], '%d-%m-%Y').timetuple()))
-            date2 = MAPI.Time.unixtime(time.mktime(datetime.strptime(exception_var[1], '%d-%m-%Y').timetuple()))
-            if date1 <= date2:
-                datelow = date1
-                datehigh = date2
-            else:
-                datelow = date2
-                datehigh = date1
-            storeexceptions.append(SNotRestriction(SAndRestriction([SPropertyRestriction(2,0xe060040,SPropValue(0x0E060040, datelow)),
-                                                                    SPropertyRestriction(0,0xe060040,SPropValue(0x0E060040, datehigh))])))
+                exceptionslist.append(SNotRestriction(exception_method()))
+        except AttributeError as e:
+            print('the Following Attribute is not known "{}"'.format(e))
 
-        if exception_rule == 'received-from' or exception_rule == 'sent-to':
-            for user in exception_var:
-                try:
-                    username = server.user(email=user)
-                    check = True
-                except kopano.NotFoundError:
-                    check = False
-
-                if check:
-                    frommail = 'ZARAFA:%s' % user.upper()
-                    fromname = u'%s <%s>' % (username.name, user)
-                else:
-                    frommail = 'SMTP:%s' % user.upper()
-                    fromname = u'%s <%s>' % (user, user)
-                if condition_rule == 'received-from':
-                    exceptionslist.append(SCommentRestriction(
-                        SPropertyRestriction(4, 0xc1d0102, SPropValue(0x00010102, '%s\x00' % frommail)),
-                        [SPropValue(0x60000003, 1L), SPropValue(0x00010102, '%s\x00' % frommail),
-                         SPropValue(0x0001001F, fromname), SPropValue(0x39000003, 0L)]))
-
-                if condition_rule == 'sent-to':
-                    exceptionslist.append(SSubRestriction(0xe12000d, SCommentRestriction(
-                        SPropertyRestriction(4, 0x300b0102, SPropValue(0x00010102, '%s\x00' % frommail)),
-                        [SPropValue(0x60000003, 1L), SPropValue(0x00010102, '%s\x00' % frommail),
-                         SPropValue(0x0001001F, fromname), SPropValue(0x39000003, 0L)])))
-
+        '''
+        If the exceptionslist is higher then 1 add the SOrRestriction attribute before the list 
+        '''
+        if exception_rule in SOrRestriction_list:
             if len(exceptionslist) > 1:
-                storeexceptions.append(SNotRestriction(SOrRestriction(conditionslist)))
-            else:
-                storeexceptions.append(SNotRestriction(exceptionslist[0]))
-
-        if exception_rule == 'contain-word-sender-address' or exception_rule == 'contain-word-in-subject' \
-            or exception_rule == 'contain-word-in-body' or exception_rule == 'contain-word-in-header':
-            for word in exception_var:
-                if exception_rule == 'contain-word-sender-address':
-                    exceptionslist.append(SContentRestriction(1, 0xc1d0102, SPropValue(0x0C1D0102, word.decode('utf8').encode('ISO-8859-1'))))
-                if exception_rule == 'contain-word-in-subject':
-                    exceptionslist.append(SContentRestriction(65537, 0x37001f, SPropValue(0x0037001F, word.decode('utf8'))))
-                if exception_rule == 'contain-word-in-body':
-                    exceptionslist.append(SContentRestriction(65537, 0x1000001f, SPropValue(0x1000001F, word.decode('utf8'))))
-                if exception_rule == 'contain-word-in-header':
-                    exceptionslist.append(SContentRestriction(65537, 0x7d001f , SPropValue(0x007D001F, word.decode('utf8'))))
-
-            if len(exceptionslist) > 1:
-                storeexceptions.append(SNotRestriction(SOrRestriction(exceptionslist)))
-            else:
-                storeexceptions.append(SNotRestriction(exceptionslist[0]))
-        if condition_rule == 'meeting-request':
-            storeexceptions.append(SAndRestriction([SNotRestriction(SOrRestriction([
-                SContentRestriction(65538,0x1a001f,SPropValue(0x001A001F, u'IPM.Schedule.Meeting.Request')),
-                SContentRestriction(65538,0x1a001f,SPropValue(0x001A001F, u'IPM.Schedule.Meeting.Canceled'))]
-                ))]))
+                storeexceptions.append(SNotRestriction(SOrRestriction(exceptionslist[0])))
+            elif len(exceptionslist) == 1:
+                storeexceptions.append(SNotRestriction(exceptionslist[0][0]))
+        elif len(exceptionslist) == 1:
+            storeconditions.append(exceptionslist[0])
 
     #combine conditions and exceptions
     if len(storeexceptions) > 0:
@@ -792,7 +815,6 @@ def createrule(options, lastid):
 
     # combine all conditions
     if len(storeconditions) > 1:
-        #returncon = SOrRestriction(storeconditions)
         returncon = SAndRestriction(storeconditions)
     else:
         returncon = storeconditions[0]
@@ -805,21 +827,13 @@ def createrule(options, lastid):
          SPropValue(PR_RULE_PROVIDER_DATA, binascii.unhexlify('010000000000000074da402772c2e440')),
          SPropValue(PR_RULE_CONDITION, returncon),
          SPropValue(PR_RULE_SEQUENCE, lastid + 1),
-         SPropValue(1719730206, 'RuleOrganizer'),
-         SPropValue(PR_RULE_NAME, options.createrule)
+         SPropValue(1719730206, b'RuleOrganizer'),
+         SPropValue(PR_RULE_NAME,  options.createrule.encode('utf-8'))
          ])]
 
     return rowlist
 
-
-def main():
-    options, args = opt_args()
-    global server
-    if not options.user:
-        print 'please user %s --user <username>' % sys.argv[0]
-        sys.exit(1)
-
-    server = kopano.Server(options)
+def kopano_rule():
     user = server.user(options.user)
     rule_table = user.store.inbox.mapiobj.OpenProperty(PR_RULES_TABLE, IID_IExchangeModifyTable, 0, 0)
     table = rule_table.GetTable(0)
@@ -828,14 +842,14 @@ def main():
     filters = table.QueryRows(-1, 0)
 
     if options.printrules:
-        print user.name
+        print(user.name)
         printrules(filters, user, server)
 
     if options.state:
         rowlist, name = changerule(filters, options.rule, options.state)
         if options.state == 'enable' or options.state == 'disable' or options.state == 'delete':
             rule_table.ModifyTable(0, rowlist)
-            print "Rule '%s' is %sd for user '%s'" % (name, options.state, user.name)
+            print("Rule '{}' is {}d for user '{}'".format(name, options.state, user.name))
 
     if options.createrule:
         try:
@@ -844,8 +858,182 @@ def main():
             lastid = 0
         rowlist = createrule(options, lastid)
         rule_table.ModifyTable(0, rowlist)
-        print "Rule '%s' created " % options.createrule
+        print("Rule '{}' created ".format(options.createrule))
 
+
+def convertRules(kopano_rule, rule_key, rule, exception=False):
+    exception_text = ''
+    if exception:
+        exception_text = "ExceptIf"
+    # kopano_rule = exchange_to_kopano['actions'][key]
+    if kopano_rule.get('type'):
+        if kopano_rule['type'] == 'boolean':
+            return kopano_rule['kopano_name']
+        if kopano_rule['type'] == 'string':
+            exchange_key = exception_text + rule_key
+            return '{}:{}'.format(kopano_rule['kopano_name'], rule[exchange_key])
+
+        if kopano_rule['type'] == 'list':
+            exchange_key = exception_text + rule_key
+            return '{}:{}'.format(kopano_rule['kopano_name'], ','.join(rule[exchange_key]))
+
+        if kopano_rule['type'] == 'dict':
+            combined_list = [d[kopano_rule['dict_key']] for d in rule[kopano_rule['value_key']]]
+            return '{}:{}'.format(kopano_rule['kopano_name'], ','.join(combined_list))
+
+    return None
+
+def exchange_rules():
+    exchange_to_kopano = {
+       "conditions": {
+            "SubjectOrBodyContainsWords":{
+                "kopano_name": "contain-word-in-body",
+                "type": "list",
+            },
+            "SubjectContainsWords": {
+               "kopano_name": "contain-word-in-subject",
+               "type": "list",
+            },
+            "From": {
+                "kopano_name": "received-from",
+                "type": "list",
+                "dict_key": "Address",
+            },
+            "SentTo": {
+                "kopano_name": "sent-to",
+                "type": "list",
+                "dict_key": "Address",
+            },
+            "MyNameInToOrCcBox": {
+                "kopano_name": "name-in-to-cc",
+                "type": "boolean",
+            },
+            "MyNameInCcBox": {
+                "kopano_name": "name-in-cc",
+                "type": "boolean",
+            },
+            "MyNameInToBox": {
+                "kopano_name": "name-in-to",
+                "type": "boolean",
+            },
+            "WithImportance": {
+                "kopano_name": "importance",
+                "type": "string",
+            },
+            "WithSensitivity": {
+                "kopano_name": "sensitivity",
+                "type": "string",
+            },
+            "SentOnlyToMe": {
+                "kopano_name": "sent-only-to-me",
+                "type": "boolean",
+            },
+            "HeaderContainsWords": {
+                "kopano_name": "contain-word-in-header",
+                "type": "list",
+            },
+            "MessageTypeMatches":{
+               "kopano_name": "meeting_request",
+               "type": "string",
+            },
+            "HasAttachment": {
+                "kopano_name": "has-attachment",
+                "type": "boolean",
+            },
+        },
+        "actions": {
+            "DeleteMessage": {
+                "kopano_name": "delete",
+                "type": "boolean"
+            },
+            "ForwardAsAttachmentTo":{
+                "type": "list",
+                "kopano_name": "forward-as-attachment"
+            },
+            "ForwardTo": {
+                 "kopano_name": "forward-to",
+                 "type": "list",
+            },
+            "RedirectTo": {
+                "kopano_name": "redirect-to",
+                "value_key": "RedirectTo"
+            },
+            "MoveToFolder": {
+                "kopano_name": "move-to",
+                "value_key": "MoveToFolder"
+            },
+            "CopyToFolder": {
+                "kopano_name": "copy-to",
+                "value_key": "CopyToFolder"
+            },
+        }
+    }
+
+
+    try:
+        rules = json.loads(open(options.importFile).read())
+    except json.errors.JSONDecodeError as e:
+        print('Not a valid json file error: "{}"'.format(e))
+        sys.exit(1)
+    except IOError:
+        print('File not found')
+        sys.exit(1)
+    if isinstance(rules, dict):
+        rules = [rules]
+
+    for rule in rules:
+        # Remove all the empty keys from the json
+        rule = {k: v for k, v in rule.items() if v is not None}
+        if options.verbose:
+            print(json.dumps(rule, indent=4))
+
+        user = rule['MailboxOwnerId']
+        if isinstance(user, dict):
+            options.user = user['Name']
+        else:
+            options.user = user.split('/')[-1]
+
+        options.createrule = rule['Name']
+
+        actions = []
+        conditions = []
+        exceptions = []
+        for key in rule:
+            if rule[key]:
+                if exchange_to_kopano['actions'].get(key):
+                    tmp = convertRules(exchange_to_kopano['actions'][key], key, rule)
+                    if tmp:
+                        actions.append(tmp)
+                if exchange_to_kopano['conditions'].get(key) and not 'ExceptIf' in key:
+                    tmp = convertRules(exchange_to_kopano['conditions'][key], key, rule)
+                    if tmp:
+                        conditions.append(tmp)
+                if exchange_to_kopano['conditions'].get(key) and 'ExceptIf' in key:
+                    tmp = convertRules(exchange_to_kopano['conditions'][key], key, rule)
+                    if tmp:
+                        exceptions.append(tmp)
+        options.actions = actions
+        options.conditions= conditions
+        options.exceptions = exceptions
+        print(options)
+        kopano_rule()
+
+def main():
+    global server
+    global options
+    options, args = opt_args()
+
+    if not options.user and not options.importFile:
+        print('please use:  %s --user <username> \n'
+              '%s --import-exchange-rules'.format(sys.argv[0]))
+        sys.exit(1)
+
+    server = kopano.Server(options)
+    if options.user:
+        kopano_rule()
+
+    if options.importFile:
+        exchange_rules()
 
 if __name__ == "__main__":
     main()

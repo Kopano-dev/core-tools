@@ -13,9 +13,12 @@ kopano-rules supports:
 * Create Rules
 
 ## Dependencies
+
 kopano-rules depends on a few Python libraries:
 
-* [terminaltables](https://pypi.python.org/pypi/terminaltables)
+* [python3-kopano](https://download.kopano.io/supported/core:/final/)
+* [tabulate](https://pypi.org/project/tabulate/)
+* [binascii](https://docs.python.org/3/library/binascii.html)
 
 
 ## Usage
@@ -32,12 +35,19 @@ kopano-rules depends on a few Python libraries:
 #### create rule
     python kopano-rules.py --user <username> --create <rulename> --conditions* "<conditions>" --actions "<actions>" --exceptions "<exceptions>"*
 
+#### Import rule from exchange
+This is tested with the following exchange command
+    
+    Get-Mailbox; $mbox | Foreach { Get-InboxRule -Mailbox $_.DistinguishedName } | ConvertTo-Json
+To import
+
+    python kopano-rules.py --import /path/to/json-file
+
 
 \* conditions or exceptions is required or both
 
 Conditions, actions and exceptions layout is > message:variables
 
-Multiple conditions,  actions  and exceptions must we seperated with ;
 
 ##### available options
 
@@ -68,6 +78,9 @@ Multiple conditions,  actions  and exceptions must we seperated with ;
 * move-to  ***
 * copy-to  ***
 * delete
+* mark-as-read  (not supported by core yet)
+* mark-as-junk
+* mark-as-importance (Low, Normal or High)
 
 \* for more addresses use , (user@kopano.com,user2@kopano.com)
 
@@ -78,21 +91,24 @@ Multiple conditions,  actions  and exceptions must we seperated with ;
 
 ### Example's
 
-##### create rule with one condition
+##### Create rule with one condition
      python kopano-rules.py --user user1 --create firstrule --conditions "received-from:user3@kopano.com" --actions "forward-to:user2@kopano.com"
 
 
-##### create rule with multiple conditions
-     python kopano-rules.py --user user1 --create firstrule --conditions "received-from:user3@kopano.com;importance:low" --actions "forward-to:user2@kopano.com"
+##### Create rule with multiple conditions
+     python kopano-rules.py --user user1 --create firstrule --conditions "received-from:user3@kopano.com" --conditions "importance:low" --actions "forward-to:user2@kopano.com"
 
-#### create rule with multiple actions
-    python kopano-rules.py --user user1 --create firstrule --conditions "received-from:user3@kopano.com" --actions "forward-to:user2@kopano.com;copy-to:Inbox/kopano,user2"
+#### Create rule with multiple actions
+    python kopano-rules.py --user user1 --create firstrule --conditions "received-from:user3@kopano.com" --actions "forward-to:user2@kopano.com" --actions "copy-to:Inbox/kopano,user2"
 
-#### create rule with multiple actions conditions and  exceptions
-    python kopano-rules.py --user user1 --create firstrule --conditions "received-from:user3@kopano.com;has-attachment" --exceptions "received-date:01-01-2015,01-01-2017;sensitivity:personal" --actions "forward-to:user2@kopano.com;copy-to:Inbox/kopano,user2"
+#### Create rule with multiple actions conditions and  exceptions
+    python kopano-rules.py --user user1 --create firstrule --conditions "received-from:user3@kopano.com" --conditions "has-attachment" --exceptions "received-date:01-01-2015,01-01-2017" --exceptions" sensitivity:personal" --actions "forward-to:user2@kopano.com" --actions "copy-to:Inbox/kopano,user2"
+
+
 
 
 ### Known issue's
-* message-size and name-in-to  are not working at the moment
+* message-size and name-in-to are not working at the moment
 * list issues with name-in-cc and  name-in-to
 * sensitivity  'normal' is not selectable in webapp
+* mark-as-read is not supported yet (should be in 8.7)
