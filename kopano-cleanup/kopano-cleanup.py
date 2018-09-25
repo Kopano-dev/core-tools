@@ -65,9 +65,9 @@ def deleteitems(options, user, folder):
             if date <= daysbeforedeleted:
                 if options.verbose:
                     if options.archive:
-                        print('Archiving \'{}\''.format(item.subject))
+                        print('Archiving \'{}\''.format(item.subject.decode('utf-8')))
                     else:
-                        print('Deleting \'{}\''.format(item.subject))
+                        print('Deleting \'{}\''.format(item.subject.decode('utf-8')))
 
                 if not options.dryrun:
                     if options.archive:
@@ -81,11 +81,11 @@ def deleteitems(options, user, folder):
     if options.progressbar:
         pbar.finish()
     if options.archive:
-        print('Archived {} item(s) for user \'{}\' in folder \'{}\' to folder \'{}\''.format(itemcount, user.name,
-                                                                                             folder.name,
-                                                                                             archive_folder.name))
+        print('Archived {} item(s) for user \'{}\' in folder \'{}\' to folder \'{}\''.format(itemcount, user.name.decode('utf-8'),
+                                                                                             folder.name.decode('utf-8'),
+                                                                                             archive_folder.name.decode('utf-8')))
     else:
-        print('Deleted {}  item(s) for user \'{}\' in folder \'{}\''.format(itemcount, user.name, folder.name))
+        print('Deleted {}  item(s) for user \'{}\' in folder \'{}\''.format(itemcount, user.name.decode('utf-8'), folder.name.decode('utf-8')))
 
     return itemcount
 
