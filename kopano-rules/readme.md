@@ -34,6 +34,10 @@ kopano-rules depends on a few Python libraries:
 
 #### create rule
     python kopano-rules.py --user <username> --create <rulename> --conditions* "<conditions>" --actions "<actions>" --exceptions "<exceptions>"*
+\* conditions or exceptions is required or both:w
+
+
+Conditions, actions and exceptions layout is > message:variables
 
 #### Import rule from exchange
 This is tested with the following exchange command
@@ -42,11 +46,6 @@ This is tested with the following exchange command
 To import
 
     python kopano-rules.py --import /path/to/json-file
-
-
-\* conditions or exceptions is required or both
-
-Conditions, actions and exceptions layout is > message:variables
 
 
 ##### available options
@@ -111,4 +110,4 @@ Conditions, actions and exceptions layout is > message:variables
 * message-size and name-in-to are not working at the moment
 * list issues with name-in-cc and  name-in-to
 * sensitivity  'normal' is not selectable in webapp
-* mark-as-read is not supported yet (should be in 8.7)
+* mark-as-read is not supported yet (should be in KC 8.7)

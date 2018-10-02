@@ -200,6 +200,7 @@ class KopanoRules():
 
         return user_list
 
+
     def forward_to(self):
         user_list = self._forward_redirect_users()
         if len(user_list) > 0:
@@ -886,13 +887,17 @@ def convertRules(kopano_rule, rule_key, rule, exception=False):
 def exchange_rules():
     exchange_to_kopano = {
        "conditions": {
-            "SubjectOrBodyContainsWords":{
+            "SubjectOrBodyContainsWords": {
                 "kopano_name": "contain-word-in-body",
                 "type": "list",
             },
             "SubjectContainsWords": {
                "kopano_name": "contain-word-in-subject",
                "type": "list",
+            },
+            "FromAddressContainsWords":{
+                "kopano_name": "contain-word-sender-address",
+                "type": "list",
             },
             "From": {
                 "kopano_name": "received-from",
@@ -932,7 +937,7 @@ def exchange_rules():
                 "kopano_name": "contain-word-in-header",
                 "type": "list",
             },
-            "MessageTypeMatches":{
+            "MessageTypeMatches": {
                "kopano_name": "meeting_request",
                "type": "string",
             },
@@ -946,7 +951,7 @@ def exchange_rules():
                 "kopano_name": "delete",
                 "type": "boolean"
             },
-            "ForwardAsAttachmentTo":{
+            "ForwardAsAttachmentTo": {
                 "type": "list",
                 "kopano_name": "forward-as-attachment"
             },
