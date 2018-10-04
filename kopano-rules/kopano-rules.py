@@ -27,6 +27,7 @@ def opt_args():
     parser.add_option("--conditions", dest="conditions", action="append", default=[], help="conditions")
     parser.add_option("--actions", dest="actions", action="append", default=[],help="actions")
     parser.add_option("--exceptions", dest="exceptions", action="append", default=[], help="exceptions")
+    parser.add_option("--stop-processing", dest="StopProcessingRules", action="store_true", help="Stop processing more rules on this message")
     parser.add_option("--import-exchange-rules", dest="importFile", action="store", help="Json file from exchange")
 
     return parser.parse_args()
@@ -226,18 +227,8 @@ class KopanoRules():
         except IndexError:
             self.user = server.user(options.user)
 
-        folders = self.conditions[0].split('/')
-        num = 0
-        for searchfolder in folders:
-            try:
-                if num == 0:
-                    self.folder = self.user.store.folder(searchfolder)
-                else:
-                    self.folder = self.folder.folder(searchfolder)
-                num += 1
-            except kopano.NotFoundError:
-                print("Folder '{}' does not exist".format(searchfolder))
-                sys.exit(1)
+        self.folder = self.user.store.folder(self.conditions[0], create=True)
+
 
     def move_to(self):
         self._get_folder()
@@ -646,7 +637,8 @@ def printrules(filters, user, server):
 def changerule(filters, number, state):
     rowlist = ''
     convertstate = {'enable': ST_ENABLED,
-                    'disable': ST_DISABLED
+                    'disable': ST_DISABLED,
+                    'enable_stop_processing': 17
                     }
     try:
         rule = filters[number - 1]
@@ -691,13 +683,13 @@ def createrule(options, lastid):
     '''
     Create kopano rule based on given options
     :param options: dict with the following keys:
-        user: User where this rule applies to 
+        user: User where this rule applies to
         createrule: name of the rule
         actions: list of actions of this rule
         conditions: list of conditions of this rule
         exceptions: list of exceptions of this rule
-    :param lastid: last rule id that is knonw    
-    :return: 
+    :param lastid: last rule id that is knonw
+    :return:
     '''
     try:
         conditions = options.conditions
@@ -729,7 +721,7 @@ def createrule(options, lastid):
 
 
         '''
-        Try to get the attribute based on parameter. 
+        Try to get the attribute based on parameter.
         if they don't exist just print the unknown attribute and continue
         '''
         try:
@@ -739,7 +731,7 @@ def createrule(options, lastid):
             print('the Following Attribute is not known "{}"'.format(e))
 
         '''
-            If the condition_rule is higher then 1 add the SOrRestriction attribute before the list 
+            If the condition_rule is higher then 1 add the SOrRestriction attribute before the list
         '''
         if condition_rule in SOrRestriction_list:
             if len(conditionslist) > 1:
@@ -755,13 +747,12 @@ def createrule(options, lastid):
     for action in actions:
         splitactions = action.split(':')
         action_rule = splitactions[0]
-        print(len(splitactions))
         if len(splitactions) > 1:
             action_var = splitactions[1].split(',')
         else:
             action_var = splitactions[0]
         '''
-        Try to get the attribute based on parameter. 
+        Try to get the attribute based on parameter.
         if they don't exist just print the unknown attribute and continue
         '''
         rules = KopanoRules(action_var)
@@ -775,7 +766,7 @@ def createrule(options, lastid):
 
     '''
     Search for exceptions that are known Kopano rules exceptions
-    same as conditions with the differents that the SNotRestriction attibute is added to the rule 
+    same as conditions with the differents that the SNotRestriction attibute is added to the rule
     '''
     for exception in exceptions:
         splitexception = exception.split(':')
@@ -787,7 +778,7 @@ def createrule(options, lastid):
         exceptionslist = []
         rules = KopanoRules(exception_var)
         '''
-        Try to get the attribute based on parameter. 
+        Try to get the attribute based on parameter.
         if they don't exist just print the unknown attribute and continue
         '''
         try:
@@ -800,7 +791,7 @@ def createrule(options, lastid):
             print('the Following Attribute is not known "{}"'.format(e))
 
         '''
-        If the exceptionslist is higher then 1 add the SOrRestriction attribute before the list 
+        If the exceptionslist is higher then 1 add the SOrRestriction attribute before the list
         '''
         if exception_rule in SOrRestriction_list:
             if len(exceptionslist) > 1:
@@ -820,10 +811,12 @@ def createrule(options, lastid):
     else:
         returncon = storeconditions[0]
 
-
+    rule_state = ST_ENABLED
+    if options.StopProcessingRules:
+        rule_state = 17
     rowlist = [ROWENTRY(
         ROW_ADD,
-        [SPropValue(PR_RULE_STATE, ST_ENABLED),
+        [SPropValue(PR_RULE_STATE, rule_state),
          SPropValue(PR_RULE_ACTIONS, ACTIONS(1, storeactions)),
          SPropValue(PR_RULE_PROVIDER_DATA, binascii.unhexlify('010000000000000074da402772c2e440')),
          SPropValue(PR_RULE_CONDITION, returncon),
@@ -961,15 +954,19 @@ def exchange_rules():
             },
             "RedirectTo": {
                 "kopano_name": "redirect-to",
-                "value_key": "RedirectTo"
+                "value_key": "RedirectTo",
+                "type": "string"
             },
             "MoveToFolder": {
                 "kopano_name": "move-to",
-                "value_key": "MoveToFolder"
+                "value_key": "MoveToFolder",
+                "type": "string"
+
             },
             "CopyToFolder": {
                 "kopano_name": "copy-to",
-                "value_key": "CopyToFolder"
+                "value_key": "CopyToFolder",
+                "type": "string"
             },
         }
     }
@@ -999,6 +996,9 @@ def exchange_rules():
             options.user = user.split('/')[-1]
 
         options.createrule = rule['Name']
+        options.StopProcessingRules = False
+        if rule['StopProcessingRules']:
+            options.StopProcessingRules = True
 
         actions = []
         conditions = []
@@ -1009,18 +1009,28 @@ def exchange_rules():
                     tmp = convertRules(exchange_to_kopano['actions'][key], key, rule)
                     if tmp:
                         actions.append(tmp)
-                if exchange_to_kopano['conditions'].get(key) and not 'ExceptIf' in key:
+
+                if exchange_to_kopano['conditions'].get(key):
                     tmp = convertRules(exchange_to_kopano['conditions'][key], key, rule)
                     if tmp:
                         conditions.append(tmp)
-                if exchange_to_kopano['conditions'].get(key) and 'ExceptIf' in key:
-                    tmp = convertRules(exchange_to_kopano['conditions'][key], key, rule)
+
+                if exchange_to_kopano['conditions'].get(key.replace('ExceptIf', '')) and 'ExceptIf' in key:
+                    tmp = key.replace('ExceptIf', '')
+                    tmp = convertRules(exchange_to_kopano['conditions'][tmp], tmp, rule, True)
                     if tmp:
                         exceptions.append(tmp)
+
         options.actions = actions
-        options.conditions= conditions
+        options.conditions = conditions
         options.exceptions = exceptions
-        print(options)
+        if not options.actions or (not options.conditions and not options.exceptions):
+            print('Rule "{}" does not have valid actions or conditions/exceptions'.format(rule['Name']))
+            if options.verbose:
+                print(rule['Description'])
+                print(json.dumps(rule, indent=4))
+
+            continue
         kopano_rule()
 
 def main():
@@ -1029,8 +1039,7 @@ def main():
     options, args = opt_args()
 
     if not options.user and not options.importFile:
-        print('please use:  %s --user <username> \n'
-              '%s --import-exchange-rules'.format(sys.argv[0]))
+        print('please use: {} --user <username> {} --import-exchange-rules'.format(sys.argv[0]))
         sys.exit(1)
 
     server = kopano.Server(options)

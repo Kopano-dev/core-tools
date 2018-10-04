@@ -103,7 +103,8 @@ To import
 #### Create rule with multiple actions conditions and  exceptions
     python kopano-rules.py --user user1 --create firstrule --conditions "received-from:user3@kopano.com" --conditions "has-attachment" --exceptions "received-date:01-01-2015,01-01-2017" --exceptions" sensitivity:personal" --actions "forward-to:user2@kopano.com" --actions "copy-to:Inbox/kopano,user2"
 
-
+#### Create rule and stop processing further rules on the message 
+    python kopano-rules.py --user user1 --create firstrule --conditions "received-from:user3@kopano.com" --actions "forward-to:user2@kopano.com" --stop-processing
 
 
 ### Known issue's
