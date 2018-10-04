@@ -22,6 +22,7 @@ def opt_args():
     parser.add_option("--list", dest="printrules", action="store_true", help="Print rules")
     parser.add_option("--rule", dest="rule", action="store", type="int", help="rule id")
     parser.add_option("--state", dest="state", action="store", help="enable, disable, delete, create")
+    parser.add_option("--empty-rules", dest="emptyRules", action="store_true", help="Empty the rules table for a specific user")
     parser.add_option("--create", dest="createrule", action="store",
                       help="create rule, use  --conditions and --actions")
     parser.add_option("--conditions", dest="conditions", action="append", default=[], help="conditions")
@@ -843,7 +844,7 @@ def kopano_rule():
         rowlist, name = changerule(filters, options.rule, options.state)
         if options.state == 'enable' or options.state == 'disable' or options.state == 'delete':
             rule_table.ModifyTable(0, rowlist)
-            print("Rule '{}' is {}d for user '{}'".format(name, options.state, user.name))
+            print("Rule '{}' is {}d for user '{}'".format(name, options.state, options.user))
 
     if options.createrule:
         try:
@@ -853,6 +854,13 @@ def kopano_rule():
         rowlist = createrule(options, lastid)
         rule_table.ModifyTable(0, rowlist)
         print("Rule '{}' created ".format(options.createrule))
+
+    if options.emptyRules:
+        for rule in filters:
+            rowlist, name = changerule(filters, rule[0].Value, 'delete')
+            rule_table.ModifyTable(0, rowlist)
+            print("Rule '{}' is deleted for user '{}'".format(name, options.user))
+
 
 
 def convertRules(kopano_rule, rule_key, rule, exception=False):
