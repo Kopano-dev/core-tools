@@ -223,17 +223,17 @@ class KopanoRules():
     def _get_folder(self):
         try:
             self.user = server.user(self.conditions[1])
+            complete_tree = self.conditions[0]
         except kopano.NotFoundError:
-            print("user '{}' not found".format(self.conditions[1]))
-            sys.exit(1)
-        except IndexError:
             self.user = server.user(options.user)
+            complete_tree = '/'.join(self.conditions)
 
-        self.folder = self.user.store.folder(self.conditions[0], create=True)
+        self.folder = self.user.store.folder(complete_tree, create=True)
 
 
     def move_to(self):
         self._get_folder()
+
         return ACTION(1, 0, None, None, 0x0, actMoveCopy(binascii.unhexlify(self.user.store.entryid),
                                                          binascii.unhexlify(self.folder.entryid)))
 
@@ -879,9 +879,14 @@ def convertRules(kopano_rule, rule_key, rule, exception=False):
     if isinstance(rule[rule_key], list):
         exchange_key = exception_text + rule_key
         return '{}:{}'.format(kopano_rule['kopano_name'], ','.join(rule[exchange_key]))
+
     if isinstance(rule[rule_key], dict):
-        combined_list = [d[kopano_rule['dict_key']] for d in rule[kopano_rule['value_key']]]
-        return '{}:{}'.format(kopano_rule['kopano_name'], ','.join(combined_list))
+        if isinstance(rule[kopano_rule['value_key']][kopano_rule['dict_key']], list):
+            return '{}:{}'.format(kopano_rule['kopano_name'],
+                                  ','.join(rule[kopano_rule['value_key']][kopano_rule['dict_key']]))
+        else:
+            combined_list = [d[kopano_rule['dict_key']] for d in rule[kopano_rule['value_key']]]
+            return '{}:{}'.format(kopano_rule['kopano_name'], ','.join(combined_list))
 
     return None
 
@@ -950,7 +955,7 @@ def exchange_rules():
             "MoveToFolder": {
                 "kopano_name": "move-to",
                 "value_key": "MoveToFolder",
-
+                "dict_key": "FolderPath",
             },
             "CopyToFolder": {
                 "kopano_name": "copy-to",
@@ -1020,7 +1025,6 @@ def exchange_rules():
                 print(json.dumps(rule, indent=4))
 
             continue
-
         kopano_rule()
 
 def main():
