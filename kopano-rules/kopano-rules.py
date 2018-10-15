@@ -105,6 +105,7 @@ class KopanoRules():
         return_list = []
         for word in self.conditions:
                 return_list.append(SContentRestriction(1, 0xc1d0102, SPropValue(0x0C1D0102, u'{}'.format(word))))
+
         return return_list
 
     def contain_word_in_subject(self):
@@ -734,8 +735,9 @@ def createrule(options, lastid):
         '''
             If the condition_rule is higher then 1 add the SOrRestriction attribute before the list
         '''
+
         if condition_rule in SOrRestriction_list:
-            if len(conditionslist) > 1:
+            if len(conditionslist) > 1 or (conditionslist[0] and len(conditionslist[0]) > 1):
                 storeconditions.append(SOrRestriction(conditionslist[0]))
             elif len(conditionslist) == 1:
                 storeconditions.append(conditionslist[0][0])
@@ -795,7 +797,7 @@ def createrule(options, lastid):
         If the exceptionslist is higher then 1 add the SOrRestriction attribute before the list
         '''
         if exception_rule in SOrRestriction_list:
-            if len(exceptionslist) > 1:
+            if len(exceptionslist) > 1 or (exceptionslist[0] and len(exceptionslist[0]) > 1):
                 storeexceptions.append(SNotRestriction(SOrRestriction(exceptionslist[0])))
             elif len(exceptionslist) == 1:
                 storeexceptions.append(SNotRestriction(exceptionslist[0][0]))
@@ -868,20 +870,18 @@ def convertRules(kopano_rule, rule_key, rule, exception=False):
     if exception:
         exception_text = "ExceptIf"
     # kopano_rule = exchange_to_kopano['actions'][key]
-    if kopano_rule.get('type'):
-        if kopano_rule['type'] == 'boolean':
-            return kopano_rule['kopano_name']
-        if kopano_rule['type'] == 'string':
-            exchange_key = exception_text + rule_key
-            return '{}:{}'.format(kopano_rule['kopano_name'], rule[exchange_key])
 
-        if kopano_rule['type'] == 'list':
-            exchange_key = exception_text + rule_key
-            return '{}:{}'.format(kopano_rule['kopano_name'], ','.join(rule[exchange_key]))
-
-        if kopano_rule['type'] == 'dict':
-            combined_list = [d[kopano_rule['dict_key']] for d in rule[kopano_rule['value_key']]]
-            return '{}:{}'.format(kopano_rule['kopano_name'], ','.join(combined_list))
+    if isinstance(rule[rule_key], bool):
+        return kopano_rule['kopano_name']
+    if isinstance(rule[rule_key], str):
+        exchange_key = exception_text + rule_key
+        return '{}:{}'.format(kopano_rule['kopano_name'], rule[exchange_key])
+    if isinstance(rule[rule_key], list):
+        exchange_key = exception_text + rule_key
+        return '{}:{}'.format(kopano_rule['kopano_name'], ','.join(rule[exchange_key]))
+    if isinstance(rule[rule_key], dict):
+        combined_list = [d[kopano_rule['dict_key']] for d in rule[kopano_rule['value_key']]]
+        return '{}:{}'.format(kopano_rule['kopano_name'], ','.join(combined_list))
 
     return None
 
@@ -890,91 +890,71 @@ def exchange_rules():
        "conditions": {
             "SubjectOrBodyContainsWords": {
                 "kopano_name": "contain-word-in-body",
-                "type": "list",
             },
             "SubjectContainsWords": {
                "kopano_name": "contain-word-in-subject",
-               "type": "list",
             },
             "FromAddressContainsWords":{
                 "kopano_name": "contain-word-sender-address",
-                "type": "list",
             },
             "From": {
                 "kopano_name": "received-from",
-                "type": "list",
                 "dict_key": "Address",
             },
             "SentTo": {
                 "kopano_name": "sent-to",
-                "type": "list",
                 "dict_key": "Address",
             },
             "MyNameInToOrCcBox": {
                 "kopano_name": "name-in-to-cc",
-                "type": "boolean",
             },
             "MyNameInCcBox": {
                 "kopano_name": "name-in-cc",
-                "type": "boolean",
             },
             "MyNameInToBox": {
                 "kopano_name": "name-in-to",
-                "type": "boolean",
             },
             "WithImportance": {
                 "kopano_name": "importance",
-                "type": "string",
             },
             "WithSensitivity": {
                 "kopano_name": "sensitivity",
-                "type": "string",
             },
             "SentOnlyToMe": {
                 "kopano_name": "sent-only-to-me",
-                "type": "boolean",
             },
             "HeaderContainsWords": {
                 "kopano_name": "contain-word-in-header",
-                "type": "list",
             },
             "MessageTypeMatches": {
                "kopano_name": "meeting_request",
-               "type": "string",
             },
             "HasAttachment": {
                 "kopano_name": "has-attachment",
-                "type": "boolean",
             },
         },
         "actions": {
             "DeleteMessage": {
                 "kopano_name": "delete",
-                "type": "boolean"
             },
             "ForwardAsAttachmentTo": {
-                "type": "list",
                 "kopano_name": "forward-as-attachment"
             },
             "ForwardTo": {
                  "kopano_name": "forward-to",
-                 "type": "list",
             },
             "RedirectTo": {
                 "kopano_name": "redirect-to",
                 "value_key": "RedirectTo",
-                "type": "string"
             },
             "MoveToFolder": {
                 "kopano_name": "move-to",
                 "value_key": "MoveToFolder",
-                "type": "string"
 
             },
             "CopyToFolder": {
                 "kopano_name": "copy-to",
                 "value_key": "CopyToFolder",
-                "type": "string"
             },
         }
     }
@@ -1033,12 +1013,14 @@ def exchange_rules():
         options.conditions = conditions
         options.exceptions = exceptions
         if not options.actions or (not options.conditions and not options.exceptions):
+
             print('Rule "{}" does not have valid actions or conditions/exceptions'.format(rule['Name']))
             if options.verbose:
                 print(rule['Description'])
                 print(json.dumps(rule, indent=4))
 
             continue
+        print(options.actions, options.conditions, options.exceptions)
         kopano_rule()
 
 def main():
