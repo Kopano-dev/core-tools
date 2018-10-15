@@ -29,6 +29,7 @@ def opt_args():
     parser.add_option("--actions", dest="actions", action="append", default=[],help="actions")
     parser.add_option("--exceptions", dest="exceptions", action="append", default=[], help="exceptions")
     parser.add_option("--stop-processing", dest="StopProcessingRules", action="store_true", help="Stop processing more rules on this message")
+    parser.add_option("--create-if-missing", dest="CreateFolder", action="store_true", help="Create folder if not exist")
     parser.add_option("--import-exchange-rules", dest="importFile", action="store", help="Json file from exchange")
 
     return parser.parse_args()
@@ -231,7 +232,7 @@ class KopanoRules():
             self.user = server.user(options.user)
             complete_tree = self.conditions[0]
 
-        self.folder = self.user.store.folder(complete_tree, create=True)
+        self.folder = self.user.store.folder(complete_tree, create=options.CreateFolder)
 
 
     def move_to(self):
@@ -769,7 +770,9 @@ def createrule(options, lastid):
                 storeactions.append(tmp)
         except AttributeError as e:
             print('the Following Attribute is not known "{}"'.format(e))
-
+        except kopano.NotFoundError as e:
+            print('rule {} "{}"'.format(options.createrule, e))
+            return
     '''
     Search for exceptions that are known Kopano rules exceptions
     same as conditions with the differents that the SNotRestriction attibute is added to the rule
@@ -856,9 +859,11 @@ def kopano_rule():
             lastid = filters[-1][1].Value
         except:
             lastid = 0
+
         rowlist = createrule(options, lastid)
-        rule_table.ModifyTable(0, rowlist)
-        print("Rule '{}' created ".format(options.createrule))
+        if rowlist:
+            rule_table.ModifyTable(0, rowlist)
+            print("Rule '{}' created ".format(options.createrule))
 
     if options.emptyRules:
         for rule in filters:
