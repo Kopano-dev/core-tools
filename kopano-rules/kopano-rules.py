@@ -227,6 +227,9 @@ class KopanoRules():
         except kopano.NotFoundError:
             self.user = server.user(options.user)
             complete_tree = '/'.join(self.conditions)
+        except IndexError:
+            self.user = server.user(options.user)
+            complete_tree = self.conditions[0]
 
         self.folder = self.user.store.folder(complete_tree, create=True)
 
