@@ -1020,7 +1020,7 @@ def exchange_rules():
                 print(json.dumps(rule, indent=4))
 
             continue
-        print(options.actions, options.conditions, options.exceptions)
+
         kopano_rule()
 
 def main():
