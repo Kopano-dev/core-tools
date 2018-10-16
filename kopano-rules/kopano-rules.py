@@ -16,6 +16,16 @@ except ImportError:
     import json
 import re
 
+try:
+    from ldap3 import Server, Connection, MODIFY_ADD, MODIFY_REPLACE, MODIFY_DELETE, \
+        ALL_ATTRIBUTES, ALL, HASHED_SALTED_SHA512, ObjectDef, LEVEL, BASE, HASHED_SALTED_SHA
+    from ldap3.utils.dn import safe_rdn
+    from ldap3.utils.hashed import hashed
+    from ldap3.core import exceptions
+    from ldap3.utils.conv import escape_filter_chars
+except ImportError as e:
+    pass
+
 def opt_args():
     parser = kopano.parser('skpcUPv')
     parser.add_option("--user", dest="user", action="store", help="Run script for user ")
@@ -31,7 +41,7 @@ def opt_args():
     parser.add_option("--stop-processing", dest="StopProcessingRules", action="store_true", help="Stop processing more rules on this message")
     parser.add_option("--create-if-missing", dest="CreateFolder", action="store_true", help="Create folder if not exist")
     parser.add_option("--import-exchange-rules", dest="importFile", action="store", help="Json file from exchange")
-
+    parser.add_option("--ldap-config", dest="configFile", action="store", help="Config file for LDAP options")
     return parser.parse_args()
 
 
@@ -40,12 +50,38 @@ class KopanoRules():
         self.server = server
         self.conditions = conditions
 
+    def _legacyExchangeDN(self, exchangeDN):
+        try:
+            con = Connection(LDAP.URL, LDAP.BINDDN, LDAP.PASSWORD,
+                                  auto_bind=True, raise_exceptions=True)
+        except exceptions.LDAPBindError:
+            print('LDAP: Unauthorized')
+            sys.exit(1)
+        except (exceptions.LDAPInvalidCredentialsResult, exceptions.LDAPInvalidDNSyntaxResult):
+            print('LDAP: Username or password in correct')
+            sys.exit(1)
+
+        if 'EX' in exchangeDN:
+            exchangeDN = exchangeDN.split('[EX:')[1][:-1]
+
+        exchangeDN = escape_filter_chars(exchangeDN)
+        search = con.search(LDAP.BASEDN,'(legacyExchangeDN={})'.format(exchangeDN),attributes=['mail'])
+        if search and len(con.entries) > 0:
+            return json.loads(con.entries[0].entry_to_json())['attributes']['mail'][0]
+
+        return None
+
+
     def _get_email(self, user):
         if options.importFile:
-            users = re.findall('"([^"]*)"', user)
-            if len(users) > 0:
-
-                user = users[0]
+            if options.configFile:
+                user = self._legacyExchangeDN(user)
+                if not user:
+                    return None
+            else:
+                users = re.findall('"([^"]*)"', user)
+                if len(users) > 0:
+                    user = users[0]
         try:
             username = self.server.user(email=user)
             check = True
@@ -717,7 +753,7 @@ def createrule(options, lastid):
     '''
     for condition in conditions:
         conditionslist = []
-        splitcondition = condition.split(':')
+        splitcondition = condition.split(':', 1)
         condition_rule = splitcondition[0]
         try:
             condition_var = splitcondition[1].split(',')
@@ -881,14 +917,22 @@ def convertRules(kopano_rule, rule_key, rule, exception=False):
 
     if isinstance(rule[rule_key], bool):
         return kopano_rule['kopano_name']
-    if isinstance(rule[rule_key], str):
+
+    elif isinstance(rule[rule_key], str):
         exchange_key = exception_text + rule_key
         return '{}:{}'.format(kopano_rule['kopano_name'], rule[exchange_key])
-    if isinstance(rule[rule_key], list):
-        exchange_key = exception_text + rule_key
-        return '{}:{}'.format(kopano_rule['kopano_name'], ','.join(rule[exchange_key]))
 
-    if isinstance(rule[rule_key], dict):
+    elif isinstance(rule[rule_key], list):
+        exchange_key = exception_text + rule_key
+        if isinstance(rule[exchange_key][0], dict):
+            join_list=[]
+            for tmp in rule[exchange_key]:
+                join_list.append(tmp[kopano_rule['dict_key']])
+            return '{}:{}'.format(kopano_rule['kopano_name'], ','.join(join_list))
+        else:
+            return '{}:{}'.format(kopano_rule['kopano_name'], ','.join(rule[exchange_key]))
+
+    elif isinstance(rule[rule_key], dict):
         if isinstance(rule[kopano_rule['value_key']][kopano_rule['dict_key']], list):
             return '{}:{}'.format(kopano_rule['kopano_name'],
                                   ','.join(rule[kopano_rule['value_key']][kopano_rule['dict_key']]))
@@ -1038,10 +1082,21 @@ def exchange_rules():
 def main():
     global server
     global options
+    global LDAP
     options, args = opt_args()
+    if options.configFile:
+        if not os.path.isfile(options.configFile):
+            print('Config file not found')
+            sys.exit(1)
+        import importlib
+
+        LDAP = importlib.import_module(options.configFile.split('.')[0], package=None)
+        if 'ldap3' not in sys.modules:
+            print('please install ldap3 (pip3 install ldap3)')
+            sys.exit(1)
 
     if not options.user and not options.importFile:
-        print('please use: {} --user <username> {} --import-exchange-rules'.format(sys.argv[0]))
+        print('please use: {} --user <username> or \n{} --import-exchange-rules <json file>'.format(sys.argv[0],sys.argv[0]))
         sys.exit(1)
 
     server = kopano.Server(options)

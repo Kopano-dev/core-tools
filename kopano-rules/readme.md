@@ -47,6 +47,16 @@ To import
 
     python kopano-rules.py --import /path/to/json-file
 
+To enable ldap searches for converting the legacyExchangeDN use the config option
+    
+    python kopano-rules.py --import /path/to/json-file --ldap-config config.py
+
+example ldap config file 
+    
+    URL = 'ldap://x.x.x.x:389'
+    BINDDN = "example\Administrator"
+    PASSWORD = "Password"
+    BASEDN = "DC=example,DC=lan"   
 
 ##### available options
 
