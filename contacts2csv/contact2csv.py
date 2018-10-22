@@ -79,7 +79,6 @@ def progressbar(count):
 def getprop(item, myprop):
     try:
         if item.prop(myprop).typename == 'PT_UNICODE':
-            print( item.prop(myprop).value)
             return item.prop(myprop).value
         elif item.prop(myprop).typename == 'PT_SYSTIME':
             epoch = datetime.utcfromtimestamp(0)
@@ -217,7 +216,6 @@ def main():
                 if options.progressbar:
                     pbar.update(itemcount + 1)
                 new_item = contacts.create_item()
-                print(new_item)
                 show_contacts = [0]
                 for num in range(0, total, 1):
                     if contact[num]:
@@ -234,7 +232,6 @@ def main():
                         else:
                             if isinstance(value, str):
                                 value = value.encode('utf-8')
-                                print(value)
                             new_item.mapiobj.SetProps([SPropValue(getattr(MAPI.Util,headers[num]), value)])
 
                         if headers[num] == "PR_EMAIL2":
