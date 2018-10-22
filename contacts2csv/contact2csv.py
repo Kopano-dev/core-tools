@@ -1,7 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
-
 
 import sys
 try:
@@ -44,7 +43,7 @@ extra = {"PR_DISPLAY_NAME_FULL": 0x8130001f,
 }
 
 def opt_args():
-    parser = kopano.parser('skpcm')
+    parser = kopano.parser('skpcmUP')
     parser.add_option("--user", dest="user", action="store", help="Run script for user")
     parser.add_option("--folder", dest="folder", action="store", help="Select an other contacts folder then the default one")
     parser.add_option("--export", dest="export", action="store_true", help="export contacts")
@@ -80,7 +79,8 @@ def progressbar(count):
 def getprop(item, myprop):
     try:
         if item.prop(myprop).typename == 'PT_UNICODE':
-            return item.prop(myprop).value.encode('utf-8')
+            print( item.prop(myprop).value)
+            return item.prop(myprop).value
         elif item.prop(myprop).typename == 'PT_SYSTIME':
             epoch = datetime.utcfromtimestamp(0)
             return (item.prop(myprop).value - epoch).total_seconds()
@@ -110,7 +110,7 @@ def main():
     else:
         user =  server.user(options.user).name
         store = server.user(options.user).store
-    print('running script for \'{}\'').format(user)
+    print('running script for \'{}\''.format(user))
     if options.delimiter:
         delimiter = options.delimiter
     else:
@@ -206,9 +206,9 @@ def main():
         if options.purge:
             contacts.empty()
         if options.progressbar:
-            cr = csv.reader(open(options.restore, "rb"), delimiter=delimiter)
+            cr = csv.reader(open(options.restore, "r"), delimiter=delimiter)
             pbar = progressbar(sum(1 for row in cr))
-        cr = csv.reader(open(options.restore, "rb"), delimiter=delimiter)
+        cr = csv.reader(open(options.restore, "r"), delimiter=delimiter)
         headers = next(cr)
         total = len(headers)
         itemcount = 0
@@ -217,6 +217,7 @@ def main():
                 if options.progressbar:
                     pbar.update(itemcount + 1)
                 new_item = contacts.create_item()
+                print(new_item)
                 show_contacts = [0]
                 for num in range(0, total, 1):
                     if contact[num]:
@@ -227,10 +228,13 @@ def main():
                         elif headers[num] == 'PR_SENSITIVITY':
                             value = int(contact[num])
                         else:
-                            value = contact[num].decode('utf-8').replace(u'\xa0', u' ')
+                            value = contact[num].replace(u'\xa0', u' ')
                         if str(headers[num]) in extra:
                             new_item.mapiobj.SetProps([SPropValue(extra[headers[num]], value)])
                         else:
+                            if isinstance(value, str):
+                                value = value.encode('utf-8')
+                                print(value)
                             new_item.mapiobj.SetProps([SPropValue(getattr(MAPI.Util,headers[num]), value)])
 
                         if headers[num] == "PR_EMAIL2":
