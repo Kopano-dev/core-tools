@@ -16,4 +16,7 @@ The following script prints the folder stat per store
 #### List hidden folders 
 
     python store-stats -u <username>  --hidden
-    
+
+#### Only count items older then
+
+    python store-stats -u <username>  --older-then "dd-mm-yyyy 00:00"

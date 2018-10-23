@@ -5,13 +5,16 @@
 
 import kopano
 from tabulate import tabulate
+from datetime import datetime
+
 import locale
 locale.setlocale(locale.LC_ALL, '')
 
 
 def opt_args():
-    parser = kopano.parser('skpcmuUP')
+    parser = kopano.parser('skfpcmuUP')
     parser.add_option("--hidden", dest="hidden", action="store_true", help="Show hidden folders")
+    parser.add_option("--older-then", dest="timestamp", action="store", help="Hide items that are younger then (dd-mm-yyyy 00:00)")
     return parser.parse_args()
 
 def sizeof_fmt(num, suffix='B'):
@@ -30,17 +33,29 @@ def main():
         items= 0
         total_folders = 0
         for folder in folders:
-
-            size = locale.format('%d', folder.size, 1)
             if folder.path:
                 name = folder.path
             else:
                 if not options.hidden:
                     continue
                 name = ".{}".format(folder.name)
-            items += folder.count
+
+            if options.timestamp:
+                count = 0
+                older_then = datetime.strptime(options.timestamp, '%d-%m-%Y %H:%M')
+                for item in folder.items():
+                    if item.created <= older_then:
+                        break
+                    count += 1
+                count = folder.count - count
+
+            else:
+                count = folder.count
+            size = locale.format('%d', folder.size, 1)
+
+            items += count
             total_folders += 1
-            table_data.append([name, folder.count, '{} ({} bytes)'.format(sizeof_fmt(folder.size), size)])
+            table_data.append([name, count, '{} ({} bytes)'.format(sizeof_fmt(folder.size), size)])
         print('{} folders and {} items in store of {}'.format(total_folders, items, user.name))
         print(tabulate(table_data, headers=table_header,tablefmt="grid"))
 if __name__ == "__main__":
