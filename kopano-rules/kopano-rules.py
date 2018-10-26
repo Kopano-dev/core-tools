@@ -964,6 +964,9 @@ def exchange_rules():
             "FromAddressContainsWords":{
                 "kopano_name": "contain-word-sender-address",
             },
+            "RecipientAddressContainsWords": {
+                "kopano_name": "contain-word-recipient-address",
+            },
             "From": {
                 "kopano_name": "received-from",
                 "dict_key": "Address",
