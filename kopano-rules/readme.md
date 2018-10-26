@@ -33,16 +33,15 @@ kopano-rules depends on a few Python libraries:
     python kopano-rules.py --user <username> --rule <number> --state delete
 
 #### create rule
-    python kopano-rules.py --user <username> --create <rulename> --conditions* "<conditions>" --actions "<actions>" --exceptions "<exceptions>"*
-\* conditions or exceptions is required or both:w
+    python kopano-rules.py --user <username> --create <rulename> --conditions "<conditions>" --actions "<actions>" --exceptions "<exceptions>"
 
-
-Conditions, actions and exceptions layout is > message:variables
+Conditions, actions and exceptions layout is "message:variables"
 
 #### Import rule from exchange
 This is tested with the following exchange command
     
     Get-Mailbox; $mbox | Foreach { Get-InboxRule -Mailbox $_.DistinguishedName } | ConvertTo-Json
+    
 To import
 
     python kopano-rules.py --import /path/to/json-file
@@ -53,7 +52,7 @@ To enable ldap searches for converting the legacyExchangeDN use the ldap-config 
 
 Example ldap config file 
     
-    URL = 'ldap://x.x.x.x:389'
+    URL = "ldap://x.x.x.x:389"
     BINDDN = "example\Administrator"
     PASSWORD = "Password"
     BASEDN = "DC=example,DC=lan"   
@@ -74,6 +73,7 @@ Example ldap config file
 * contain-word-in-header **
 * contain-word-in-subject **
 * contain-word-sender-address  **
+* contain-word-recipient-address  **
 * message-size (size in kb)
 * meeting-request 
 * received-date (dd-mm-yyyy)
@@ -103,7 +103,6 @@ Example ldap config file
 ##### Create rule with one condition
      python kopano-rules.py --user user1 --create firstrule --conditions "received-from:user3@kopano.com" --actions "forward-to:user2@kopano.com"
 
-
 ##### Create rule with multiple conditions
      python kopano-rules.py --user user1 --create firstrule --conditions "received-from:user3@kopano.com" --conditions "importance:low" --actions "forward-to:user2@kopano.com"
 
@@ -115,7 +114,6 @@ Example ldap config file
 
 #### Create rule and stop processing further rules on the message 
     python kopano-rules.py --user user1 --create firstrule --conditions "received-from:user3@kopano.com" --actions "forward-to:user2@kopano.com" --stop-processing
-
 
 ### Known issue's
 * message-size and name-in-to are not working at the moment

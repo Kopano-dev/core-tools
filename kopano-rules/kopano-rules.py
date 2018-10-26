@@ -52,8 +52,7 @@ class KopanoRules():
 
     def _legacyExchangeDN(self, exchangeDN):
         try:
-            con = Connection(LDAP.URL, LDAP.BINDDN, LDAP.PASSWORD,
-                                  auto_bind=True, raise_exceptions=True)
+            con = Connection(LDAP.URL, LDAP.BINDDN, LDAP.PASSWORD, auto_bind=True, raise_exceptions=True)
         except exceptions.LDAPBindError:
             print('LDAP: Unauthorized')
             sys.exit(1)
@@ -65,6 +64,7 @@ class KopanoRules():
             exchangeDN = exchangeDN.split('[EX:')[1][:-1]
 
         exchangeDN = escape_filter_chars(exchangeDN)
+
         search = con.search(LDAP.BASEDN,'(legacyExchangeDN={})'.format(exchangeDN),attributes=['mail'])
         if search and len(con.entries) > 0:
             return json.loads(con.entries[0].entry_to_json())['attributes']['mail'][0]
@@ -144,6 +144,17 @@ class KopanoRules():
                 return_list.append(SContentRestriction(1, 0xc1d0102, SPropValue(0x0C1D0102, u'{}'.format(word))))
 
         return return_list
+
+    def contain_word_recipient_address(self):
+        return_list = []
+        for word in self.conditions:
+            return_list.append(SContentRestriction(1, 0x300b0102,SPropValue(0x300B0102, u'{}'.format(word.upper()))))
+        if len(return_list) > 1:
+            print(SSubRestriction(0x0E12000D, SOrRestriction(return_list)))
+            return SSubRestriction(0x0E12000D, SOrRestriction(return_list))
+        else:
+            print(SSubRestriction(0x0E12000D, return_list[0]))
+            return SSubRestriction(0x0E12000D, return_list[0])
 
     def contain_word_in_subject(self):
         return_list = []
@@ -866,7 +877,7 @@ def createrule(options, lastid):
          SPropValue(PR_RULE_PROVIDER_DATA, binascii.unhexlify('010000000000000074da402772c2e440')),
          SPropValue(PR_RULE_CONDITION, returncon),
          SPropValue(PR_RULE_SEQUENCE, lastid + 1),
-         SPropValue(1719730206, b'RuleOrganizer'),
+         SPropValue(PR_RULE_PROVIDER, b'RuleOrganizer'),
          SPropValue(PR_RULE_NAME,  options.createrule.encode('utf-8'))
          ])]
 
@@ -899,6 +910,7 @@ def kopano_rule():
         rowlist = createrule(options, lastid)
         if rowlist:
             rule_table.ModifyTable(0, rowlist)
+
             print("Rule '{}' created ".format(options.createrule))
 
     if options.emptyRules:
