@@ -150,10 +150,8 @@ class KopanoRules():
         for word in self.conditions:
             return_list.append(SContentRestriction(1, 0x300b0102,SPropValue(0x300B0102, u'{}'.format(word.upper()))))
         if len(return_list) > 1:
-            print(SSubRestriction(0x0E12000D, SOrRestriction(return_list)))
             return SSubRestriction(0x0E12000D, SOrRestriction(return_list))
         else:
-            print(SSubRestriction(0x0E12000D, return_list[0]))
             return SSubRestriction(0x0E12000D, return_list[0])
 
     def contain_word_in_subject(self):
