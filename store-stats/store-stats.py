@@ -44,7 +44,7 @@ def main():
                 count = 0
                 older_then = datetime.strptime(options.timestamp, '%d-%m-%Y %H:%M')
                 for item in folder.items():
-                    if item.created <= older_then:
+                    if item.received <= older_then:
                         break
                     count += 1
                 count = folder.count - count
