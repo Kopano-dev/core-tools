@@ -118,6 +118,7 @@ def getdelegateuser(user):
 
     return names
 
+
 def listpermissions(user, options):
     tabledelagate_header = ["User","See private items", "Send copy"]
     tabledelagate_data = []
@@ -163,8 +164,6 @@ def listpermissions(user, options):
                            '\n'.join(perfolder['Other'])])
 
 
-    # print(tabulate(tableacl_data, headers=table_header, tablefmt="grid"))
-    # acltable = AsciiTable(tableacl_data)
     print('Store information {}'.format(user.name))
     if len(tabledelagate_data) > 1:
         print('Delegate information:')
@@ -172,7 +171,6 @@ def listpermissions(user, options):
 
     print('Folder permissions:')
     print(tabulate(tableacl_data, headers=table_header, tablefmt="grid"))
-    # print(acltable.table)
 
 
 def calculatepermissions():
@@ -197,6 +195,7 @@ def calculatepermissions():
                      "[7] Edit all items\n"
                      "[8] Delete own items\n"
                      "[9] Delete all items\n")
+
     calculate = 0x00000000
     for number in perm.split(','):
         try:
@@ -204,7 +203,7 @@ def calculatepermissions():
         except ValueError:
             continue
 
-    print('Please use the following value for changing the permissions {} '.format(hex(calculate)))
+    print('Please use the following value for changing the permissions {}'.format(hex(calculate)))
 
 
 def removepermissions(user, options, folder, customname=None):
@@ -238,7 +237,7 @@ def removepermissions(user, options, folder, customname=None):
 
 def addpermissions(user, options, foldername):
     if not options.permission:
-        print('please use {} --user <username> --add  <username> --permission <permission>'.format(sys.argv[0]))
+        print('please use: {} --user <username> --add  <username> --permission <permission>'.format(sys.argv[0]))
         sys.exit(1)
 
     convertrules = {"norights": ecRightsTemplateNoRights,
@@ -252,7 +251,6 @@ def addpermissions(user, options, foldername):
         permission = convertrules[options.permission.lower()]
     else:
         permission = int(options.permission, 0)
-
 
     acl_table = foldername.mapiobj.OpenProperty(PR_ACL_TABLE, IID_IExchangeModifyTable, 0, 0)
     table = acl_table.GetTable(0)
@@ -275,7 +273,8 @@ def addpermissions(user, options, foldername):
         foldername = 'Main store'
     else:
         foldername = foldername.name
-    print('Added user {} with right {} on folder {}'.format(options.add, options.permission, foldername))
+    print('Added user {} with rights {} on folder {}'.format(options.add, options.permission, foldername))
+
 
 def main():
     options, args = opt_args()
@@ -285,7 +284,7 @@ def main():
         sys.exit(0)
 
     if not options.user:
-        print('please user %s --user <username>'.format(sys.argv[0]))
+        print('please use:  %s --user <username>'.format(sys.argv[0]))
         sys.exit(1)
 
     server = kopano.Server(options)
@@ -294,8 +293,6 @@ def main():
     if options.printrules:
         listpermissions(user, options)
         sys.exit(0)
-
-
 
     if options.remove:
         if not options.folders:
@@ -309,6 +306,7 @@ def main():
                 addpermissions(user, options, folder)
         else:
             addpermissions(user, options, user.store)
+
 
 if __name__ == "__main__":
     main()
