@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
 #
@@ -7,7 +7,10 @@ import kopano
 from MAPI.Util import *
 import sys
 import binascii
-from terminaltables import AsciiTable
+from tabulate import tabulate
+if sys.version_info <= (3, 0):
+    print('Script is only working with python 3 ')
+    sys.exit(1)
 
 ecRightsNone = 0x00000000
 ecRightsReadAny = 0x00000001
@@ -20,7 +23,7 @@ ecRightsCreateSubfolder = 0x00000080
 ecRightsFolderAccess = 0x00000100
 ecRightsFolderVisible = 0x00000400
 
-ecRightsFullControl = 0x000004FBL
+ecRightsFullControl = 0x000004FB
 
 ecRightsTemplateNoRights = ecRightsFolderVisible
 ecRightsTemplateReadOnly = ecRightsTemplateNoRights | ecRightsReadAny
@@ -30,7 +33,7 @@ EMS_AB_ADDRESS_LOOKUP = 0x1
 
 
 def opt_args():
-    parser = kopano.parser('skpcf')
+    parser = kopano.parser('skpcfUP')
     parser.add_option("--user", dest="user", action="store", help="Run script for user ")
     parser.add_option("--list", dest="printrules", action="store_true", help="Print rules")
     parser.add_option("--details", dest="printdetails", action="store_true", help="Print more details")
@@ -116,11 +119,13 @@ def getdelegateuser(user):
     return names
 
 def listpermissions(user, options):
-    tabledelagate_data = [["User","See private items", "Send copy"]]
+    tabledelagate_header = ["User","See private items", "Send copy"]
+    tabledelagate_data = []
     #delegate info
-    delnames =getdelegateuser(user)
+    delnames = getdelegateuser(user)
 
     for deluser in delnames['users']:
+
         try:
             if delnames['users'][deluser]['delegate']:
                 delegate = True
@@ -136,7 +141,8 @@ def listpermissions(user, options):
             tabledelagate_data.append([deluser, private, delegate])
 
     #acl rules
-    tableacl_data = [["Folder", "Fullcontroll", "Owner", "Secretary", "Readonly", "No rights", "Other"]]
+    table_header = ["Folder", "Fullcontroll", "Owner", "Secretary", "Readonly", "No rights", "Other"]
+    tableacl_data =[]
     store = user.store
     if not options.folders:
         perfolder = getpermissions(store)
@@ -148,7 +154,7 @@ def listpermissions(user, options):
     for folder in store.folders():
         perfolder = getpermissions(folder)
         folderindent = ''
-        for i in xrange(0, len(folder.path.split('/')) - 1):
+        for i in range(0, len(folder.path.split('/')) - 1):
             folderindent += '-'
         foldername = '%s %s ' % (folderindent, folder.name)
         tableacl_data.append([foldername, '\n'.join(perfolder['Full control']), '\n'.join(perfolder['Owner']),
@@ -157,15 +163,16 @@ def listpermissions(user, options):
                            '\n'.join(perfolder['Other'])])
 
 
-    acltable = AsciiTable(tableacl_data)
-    print 'Store information %s ' % user.name
-    if  len(tabledelagate_data) > 1:
-        delegatetable = AsciiTable(tabledelagate_data)
-        print 'Delegate information:'
-        print delegatetable.table
+    # print(tabulate(tableacl_data, headers=table_header, tablefmt="grid"))
+    # acltable = AsciiTable(tableacl_data)
+    print('Store information {}'.format(user.name))
+    if len(tabledelagate_data) > 1:
+        print('Delegate information:')
+        print(tabulate(tabledelagate_data, headers=tabledelagate_header, tablefmt="grid"))
 
-    print 'Folder permissions:'
-    print acltable.table
+    print('Folder permissions:')
+    print(tabulate(tableacl_data, headers=table_header, tablefmt="grid"))
+    # print(acltable.table)
 
 
 def calculatepermissions():
@@ -180,7 +187,7 @@ def calculatepermissions():
                    9: 0x00000040
                    }
 
-    perm = raw_input("Please select the permissions (1,5,7)\n"
+    perm = input("Please select the permissions (1,5,7)\n"
                      "[1] Create items\n"
                      "[2] Read items\n"
                      "[3] Create subfolders\n"
@@ -197,7 +204,7 @@ def calculatepermissions():
         except ValueError:
             continue
 
-    print 'Please use the following value for changing the permissions %s ' % hex(calculate)
+    print('Please use the following value for changing the permissions {} '.format(hex(calculate)))
 
 
 def removepermissions(user, options, folder, customname=None):
@@ -226,22 +233,24 @@ def removepermissions(user, options, folder, customname=None):
             foldername = customname
         else:
             foldername = folder.name
-        print 'removing %s from the permission table for folder %s ' % (removeuser, foldername)
+        print('removing {} from the permission table for folder {}'.format(removeuser, foldername))
 
 
 def addpermissions(user, options, foldername):
     if not options.permission:
-        print 'please use %s --user <username> --add  <username> --permission <permission>' % sys.argv[0]
+        print('please use {} --user <username> --add  <username> --permission <permission>'.format(sys.argv[0]))
         sys.exit(1)
+
     convertrules = {"norights": ecRightsTemplateNoRights,
                     "readonly": ecRightsTemplateReadOnly,
                     "secretary": ecRightsTemplateSecretary,
                     "owner": ecRightsTemplateOwner,
                     "fullcontrol": ecRightsFullControl
                     }
-    try:
-        permission = convertrules[options.permission]
-    except KeyError:
+
+    if convertrules.get(options.permission.lower()):
+        permission = convertrules[options.permission.lower()]
+    else:
         permission = int(options.permission, 0)
 
 
@@ -262,6 +271,11 @@ def addpermissions(user, options, foldername):
 
     acl_table.ModifyTable(0, rowlist)
 
+    if foldername.name == user.name:
+        foldername = 'Main store'
+    else:
+        foldername = foldername.name
+    print('Added user {} with right {} on folder {}'.format(options.add, options.permission, foldername))
 
 def main():
     options, args = opt_args()
@@ -271,7 +285,7 @@ def main():
         sys.exit(0)
 
     if not options.user:
-        print 'please user %s --user <username>' % sys.argv[0]
+        print('please user %s --user <username>'.format(sys.argv[0]))
         sys.exit(1)
 
     server = kopano.Server(options)
