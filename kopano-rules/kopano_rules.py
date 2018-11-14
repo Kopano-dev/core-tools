@@ -29,7 +29,7 @@ except ImportError as e:
 def opt_args():
     parser = kopano.parser('skpcUPv')
     parser.add_option("--user", dest="user", action="store", help="Run script for user ")
-    parser.add_option("--list", dest="printrules", action="store_true", help="Print rules")
+    parser.add_option("--list", dest="listrules", action="store_true", help="Print rules")
     parser.add_option("--rule", dest="rule", action="store", type="int", help="rule id")
     parser.add_option("--state", dest="state", action="store", help="enable, disable, delete, create")
     parser.add_option("--empty-rules", dest="emptyRules", action="store_true", help="Empty the rules table for a specific user")
@@ -46,9 +46,13 @@ def opt_args():
 
 
 class KopanoRules():
-    def __init__(self, conditions):
+    def __init__(self, server, user, conditions, configFile=None,importFile=None, CreateFolder=False):
         self.server = server
         self.conditions = conditions
+        self.user = user
+        self.configFile = configFile
+        self.importFile = importFile
+        self.CreateFolder = CreateFolder
 
     def _legacyExchangeDN(self, exchangeDN):
         try:
@@ -73,8 +77,8 @@ class KopanoRules():
 
 
     def _get_email(self, user):
-        if options.importFile:
-            if options.configFile:
+        if self.importFile:
+            if self.configFile:
                 user = self._legacyExchangeDN(user)
                 if not user:
                     return None
@@ -141,14 +145,14 @@ class KopanoRules():
     def contain_word_sender_address(self):
         return_list = []
         for word in self.conditions:
-                return_list.append(SContentRestriction(1, 0xc1d0102, SPropValue(0x0C1D0102, u'{}'.format(word))))
+                return_list.append(SContentRestriction(1, 0xc1d0102, SPropValue(0x0C1D0102, str.encode(word))))
 
         return return_list
 
     def contain_word_recipient_address(self):
         return_list = []
         for word in self.conditions:
-            return_list.append(SContentRestriction(1, 0x300b0102,SPropValue(0x300B0102, u'{}'.format(word.upper()))))
+            return_list.append(SContentRestriction(1, 0x300b0102,SPropValue(0x300B0102, str.encode(word.upper()))))
         if len(return_list) > 1:
             return SSubRestriction(0x0E12000D, SOrRestriction(return_list))
         else:
@@ -258,31 +262,31 @@ class KopanoRules():
     def redirect_to(self):
         user_list = self._forward_redirect_users()
         if len(user_list) > 0:
-            return ACTION(7, 0, None, None, 0x0, actFwdDelegate(user_list))
+            return ACTION(7, 3, None, None, 0x0, actFwdDelegate(user_list))
 
     def forward_as_attachment(self):
 
         user_list = self._forward_redirect_users()
         if len(user_list) > 0:
-            return ACTION(7, 0, None, None, 0x0, actFwdDelegate(user_list))
+            return ACTION(7, 4, None, None, 0x0, actFwdDelegate(user_list))
 
     def _get_folder(self):
+
         try:
-            self.user = server.user(self.conditions[1])
+            self.user = self.server.user(self.conditions[1])
             complete_tree = self.conditions[0]
         except kopano.NotFoundError:
-            self.user = server.user(options.user)
+            self.user = self.server.user(self.user)
             complete_tree = '/'.join(self.conditions)
         except IndexError:
-            self.user = server.user(options.user)
+            self.user = self.server.user(self.user)
             complete_tree = self.conditions[0]
 
-        self.folder = self.user.store.folder(complete_tree, create=options.CreateFolder)
+        self.folder = self.user.store.folder(complete_tree, create=self.CreateFolder)
 
 
     def move_to(self):
         self._get_folder()
-
         return ACTION(1, 0, None, None, 0x0, actMoveCopy(binascii.unhexlify(self.user.store.entryid),
                                                          binascii.unhexlify(self.folder.entryid)))
 
@@ -291,7 +295,7 @@ class KopanoRules():
         return ACTION(2, 0, None, None, 0x0, actMoveCopy(binascii.unhexlify(self.user.store.entryid),
                                                          binascii.unhexlify(self.folder.entryid)))
     def delete(self):
-        user_store = self.server.user(options.user).store
+        user_store = self.server.user(self.user).store
         wastebasket = user_store.wastebasket.entryid
         return ACTION(1, 0, None, None, 0x0, actMoveCopy(binascii.unhexlify(user_store.entryid),
                                                          binascii.unhexlify(wastebasket)))
@@ -299,7 +303,7 @@ class KopanoRules():
         return ACTION(11, 0, None, None, 0x0, None)
 
     def mark_as_junk(self):
-        user_store = self.server.user(options.user).store
+        user_store = self.server.user(self.user).store
         junk = user_store.junk.entryid
         return ACTION(1, 0, None, None, 0x0, actMoveCopy(binascii.unhexlify(user_store.entryid),
                                                          binascii.unhexlify(junk)))
@@ -310,29 +314,33 @@ class KopanoRules():
         return ACTION(9, 0, None, None, 0x0, SPropValue(PR_IMPORTANCE, importance[self.conditions[0].lower()]))
 
 
-def convertcondition(conditions):
+def convertcondition(conditions): ## TODO make this nicer
     condition_message = ''
     conlist = []
     totalnum = 0
     messagelist = []
-    try:
+    if isinstance(conditions, SAndRestriction):
         conditions = conditions.lpRes
-        totalconditions = len(conditions.lpRes)
-    except AttributeError:
-        conditions = conditions
-        try:
-            # print(conditions)
-            totalconditions = len(conditions)
-        except (AttributeError, TypeError):
-            conditions = [conditions]
-            totalconditions = len(conditions)
+    elif isinstance(conditions, SCommentRestriction):
+        conditions = [conditions.lpRes]
+    elif isinstance(conditions,SPropertyRestriction):
+        conditions = [conditions]
+    elif isinstance(conditions,SSubRestriction):
+        conditions = [conditions.lpRes]
+    elif isinstance(conditions,SContentRestriction):
+        conditions = [conditions]
+    elif isinstance(conditions,SBitMaskRestriction):
+        conditions = [conditions]
+
     for condition in conditions:
         connum = 0
+
         # SExistRestriction
         if isinstance(condition, SExistRestriction):
             proptag = hex(condition.ulPropTag)
             if proptag == '0x1a001e':
                 condition_message += "Is received (all messages)\n"
+
         # SOrRestriction
         if isinstance(condition, SOrRestriction):
             totaladdresses = len(condition.lpRes)
@@ -344,8 +352,12 @@ def convertcondition(conditions):
                         conlist.append(proptag)
                         if proptag == "0xc1d0102":
                             condition_message += "Is received from "
+                        if proptag == '0x300b0102':
+                            condition_message += "Is sent to: "
 
-                    condition_message += addresses.lpRes.lpProp.Value.replace('ZARAFA:', '').lower()
+                    user = addresses.lpRes.lpProp.Value.replace(b'ZARAFA:', b'').lower()
+                    condition_message += "{} \n".format(user.decode('utf-8'))
+
 
                 if isinstance(addresses, SContentRestriction):
                     proptag = hex(addresses.ulPropTag)
@@ -361,10 +373,18 @@ def convertcondition(conditions):
                             condition_message += "Includes these word(s) in the header: "
                         if proptag == '0x1a001f':
                             condition_message += "Which is a meeting invitation or update"
+                        if proptag == '0x300B0102':
+                            condition_message += "Includes these word(s) in the recipient address:"
+
+
 
                     if proptag != '0x1a001f':
                         try:
-                            condition_message += "%s \n" % condition.lpProp.Value
+                            if isinstance(condition.lpProp.Value, bytes):
+                                words = condition.lpProp.Value.decode('utf-8')
+                            else:
+                                words = condition.lpProp.Value
+                            condition_message += u"{} \n".format(words)
                         except AttributeError as e:
                             print(e, condition)
 
@@ -376,6 +396,7 @@ def convertcondition(conditions):
 
         # single.
         if isinstance(condition, SContentRestriction):
+
             if not SContentRestriction in conlist:
                 conlist.append(SContentRestriction)
                 proptag = hex(condition.ulPropTag).lower()
@@ -389,8 +410,16 @@ def convertcondition(conditions):
                     condition_message += "Includes these word(s) in the header: "
                 if proptag == '0x1a001f':
                     condition_message += "Which is a meeting invitation or update"
+                if proptag == '0x300B0102':
+                    condition_message += "Includes these word(s) in the recipient address:"
+
+
             if proptag != '0x1a001f':
-                condition_message += "%s \n" % condition.lpProp.Value
+                if isinstance(condition.lpProp.Value, bytes):
+                    words = condition.lpProp.Value.decode('utf-8')
+                else:
+                    words = condition.lpProp.Value
+                condition_message += u"{} \n".format(words)
 
 
 
@@ -399,7 +428,9 @@ def convertcondition(conditions):
             if proptag not in conlist:
                 conlist.append(proptag)
                 if proptag == "0xc1d0102":
-                    condition_message += "Is received from: %s \n" % condition.lpProp.Value.replace('ZARAFA:', '').replace('SMTP:', '').lower()
+                    user = condition.lpProp.Value.replace(b'ZARAFA:', b'').replace(b'SMTP:', b'').lower()
+                    condition_message += "Is received from: {} \n".format(user.decode('utf-8'))
+
                 if proptag == '0x57000b' and condition.lpProp.Value:
                     condition_message += "Is sent only to me \n"
                 if proptag == '0x57000b' and not condition.lpProp.Value and '0x58000b' not in conlist:
@@ -435,9 +466,9 @@ def convertcondition(conditions):
             if proptag == '0xe060040':
                 if proptag not in conlist:
                     conlist.append(proptag)
-                    condition_message += "if received "
+                    condition_message += "If received "
                 if condition.relop == 2:
-                    condition_message += "after %s " % condition.lpProp.Value
+                    condition_message += "After %s " % condition.lpProp.Value
                 if condition.relop == 0:
                     condition_message += "and before %s " % condition.lpProp.Value
 
@@ -449,7 +480,11 @@ def convertcondition(conditions):
                 conlist.append(proptag)
                 if proptag == '0xc1d0102':
                     condition_message += "Is received from: "
-            condition_message += "{} \n".format(condition.lpRes.lpProp.Value.decode('utf-8').replace('ZARAFA:', '').replace('SMTP:', '').lower())
+                if proptag == '0x300b0102':
+                    condition_message += "Is sent to: "
+
+            user = condition.lpRes.lpProp.Value.replace(b'ZARAFA:', b'').replace(b'SMTP:', b'').lower()
+            condition_message += "{} \n".format(user.decode('utf-8'))
 
         # multiple values
         if isinstance(condition, SAndRestriction):
@@ -479,17 +514,17 @@ def convertcondition(conditions):
                     if proptag == '0xe080003':
                         if proptag not in conlist:
                             conlist.append(proptag)
-                            condition_message += "if received "
+                            condition_message += "If received "
                         if andcon.relop == 2:
-                            condition_message += "at least %s kb " % (int(andcon.lpProp.Value) / 10)
+                            condition_message += "At least %s kb " % (int(andcon.lpProp.Value) / 10)
                         if andcon.relop == 0:
                             condition_message += "and at most %s kb \n" % (int(andcon.lpProp.Value) / 10)
                     if proptag == '0xe060040':
                         if proptag not in conlist:
                             conlist.append(proptag)
-                            condition_message += "if received "
+                            condition_message += "If received "
                         if andcon.relop == 2:
-                            condition_message += "after %s " % andcon.lpProp.Value
+                            condition_message += "After %s " % andcon.lpProp.Value
                         if andcon.relop == 0:
                             condition_message += "and before %s \n" % andcon.lpProp.Value
 
@@ -508,7 +543,7 @@ def convertcondition(conditions):
             for cond in listconditions:
                 if isinstance(cond, SCommentRestriction):
                     content = cond.rt
-                    email = cond.lpRes.lpProp.Value.replace('ZARAFA:', '').replace('SMTP:', '').lower()
+                    email = cond.lpRes.lpProp.Value.replace(b'ZARAFA:', '').replace(b'SMTP:', '').lower()
                     if content == 10:
                         if connum == 0:
                             condition_message += 'NOT received from: '
@@ -532,8 +567,10 @@ def convertcondition(conditions):
                             condition_message += "Except if the header contains: "
                         if proptag == '0x1a001f':
                             condition_message += "Except if meeting invitation or update"
+                        if proptag == '0x300B0102':
+                            condition_message += "Except if the recipient address contains:"
                     if proptag != '0x1a001f':
-                        condition_message += cond.lpProp.Value
+                        condition_message += '{}'.format(cond.lpProp.Value)
 
                 if isinstance(cond, SAndRestriction):
                     andnum = 0
@@ -604,8 +641,14 @@ def convertaction(action, user,server):
 
     num = 0
     for act in action.Value.lpAction:
+
+        if not act.actobj:
+            if act.acttype == 11:
+                action_message += 'Mark item as read'
         if isinstance(act.actobj, actDeferAction):
+
             action_message += 'Deferred  action (client side rule)'
+
         if isinstance(act.actobj, actMoveCopy):
             folderid = binascii.hexlify(act.actobj.FldEntryId)
             storeid = act.actobj.StoreEntryId
@@ -717,7 +760,7 @@ def changerule(filters, number, state):
              SPropValue(PR_RULE_ACTIONS, actions),
              SPropValue(PR_RULE_CONDITION, conditions),
              SPropValue(PR_RULE_SEQUENCE, sequence),
-             SPropValue(1719730206, 'RuleOrganizer'),
+             SPropValue(1719730206, b'RuleOrganizer'),
              SPropValue(PR_RULE_NAME, name)
              ])]
 
@@ -730,7 +773,9 @@ def changerule(filters, number, state):
     return rowlist, name
 
 
-def createrule(options, lastid):
+def createrule(server, name, lastid, user, conditions=None, actions=None, exceptions=None, StopProcessingRules=False,
+               CreateFolder=False, configFile=None, importFile=None):
+
     '''
     Create kopano rule based on given options
     :param options: dict with the following keys:
@@ -742,15 +787,14 @@ def createrule(options, lastid):
     :param lastid: last rule id that is knonw
     :return:
     '''
-    try:
-        conditions = options.conditions
-    except AttributeError:
+
+    if not conditions:
         conditions = []
-    actions = options.actions
-    try:
-        exceptions = options.exceptions
-    except AttributeError:
+    if not actions:
+        actions = []
+    if not exceptions:
         exceptions = []
+
     storeconditions = []
     storeactions = []
     storeexceptions = []
@@ -768,7 +812,7 @@ def createrule(options, lastid):
             condition_var = splitcondition[1].split(',')
         except IndexError:
             condition_var = ''
-        rules = KopanoRules(condition_var)
+        rules = KopanoRules(server, user, condition_var, configFile,importFile, CreateFolder)
 
 
         '''
@@ -807,7 +851,7 @@ def createrule(options, lastid):
         Try to get the attribute based on parameter.
         if they don't exist just print the unknown attribute and continue
         '''
-        rules = KopanoRules(action_var)
+        rules = KopanoRules(server, user, action_var, configFile,importFile, CreateFolder)
         try:
             action_method = getattr(rules, action_rule.replace('-', '_'))
             tmp = action_method()
@@ -816,7 +860,7 @@ def createrule(options, lastid):
         except AttributeError as e:
             print('the Following Attribute is not known "{}"'.format(e))
         except kopano.NotFoundError as e:
-            print('rule {} "{}"'.format(options.createrule, e))
+            print('rule {} "{}"'.format(name, e))
             return
     '''
     Search for exceptions that are known Kopano rules exceptions
@@ -830,7 +874,7 @@ def createrule(options, lastid):
         except IndexError:
             exception_var = ''
         exceptionslist = []
-        rules = KopanoRules(exception_var)
+        rules = KopanoRules(server, user, exception_var, configFile,importFile, CreateFolder)
         '''
         Try to get the attribute based on parameter.
         if they don't exist just print the unknown attribute and continue
@@ -866,7 +910,7 @@ def createrule(options, lastid):
         returncon = storeconditions[0]
 
     rule_state = ST_ENABLED
-    if options.StopProcessingRules:
+    if StopProcessingRules:
         rule_state = 17
     rowlist = [ROWENTRY(
         ROW_ADD,
@@ -876,47 +920,51 @@ def createrule(options, lastid):
          SPropValue(PR_RULE_CONDITION, returncon),
          SPropValue(PR_RULE_SEQUENCE, lastid + 1),
          SPropValue(PR_RULE_PROVIDER, b'RuleOrganizer'),
-         SPropValue(PR_RULE_NAME,  options.createrule.encode('utf-8'))
+         SPropValue(PR_RULE_NAME,  name.encode('utf-8'))
          ])]
 
     return rowlist
 
-def kopano_rule():
-    user = server.user(options.user)
+def kopano_rule(server, user, listrules=False, rule=None, state=None, emptyRules=False, rulename=None, conditions=None,
+                actions=None, exceptions=None, StopProcessingRules=False, CreateFolder=False):
+    user = server.user(user)
     rule_table = user.store.inbox.mapiobj.OpenProperty(PR_RULES_TABLE, IID_IExchangeModifyTable, 0, 0)
     table = rule_table.GetTable(0)
     cols = table.QueryColumns(TBL_ALL_COLUMNS)
     table.SetColumns(cols, 0)
     filters = table.QueryRows(-1, 0)
 
-    if options.printrules:
+    if listrules:
         print(user.name)
         printrules(filters, user, server)
+        sys.exit(0)
 
-    if options.state:
-        rowlist, name = changerule(filters, options.rule, options.state)
-        if options.state == 'enable' or options.state == 'disable' or options.state == 'delete':
+    if state:
+        rowlist, name = changerule(filters, rule, state)
+        if state == 'enable' or state == 'disable' or state == 'delete':
             rule_table.ModifyTable(0, rowlist)
-            print("Rule '{}' is {}d for user '{}'".format(name, options.state, options.user))
+            print("Rule '{}' is {}d for user '{}'".format(name.decode('utf-8'), state, user.name))
+            sys.exit(0)
 
-    if options.createrule:
+    if rulename:
         try:
             lastid = filters[-1][1].Value
         except:
             lastid = 0
 
-        rowlist = createrule(options, lastid)
+        rowlist = createrule(server, rulename, lastid, user.name, conditions,actions, exceptions, StopProcessingRules,
+                             CreateFolder)
         if rowlist:
+
             rule_table.ModifyTable(0, rowlist)
+            print("Rule '{}' created ".format(rulename))
+            sys.exit(0)
 
-            print("Rule '{}' created ".format(options.createrule))
-
-    if options.emptyRules:
+    if emptyRules:
         for rule in filters:
             rowlist, name = changerule(filters, rule[0].Value, 'delete')
             rule_table.ModifyTable(0, rowlist)
-            print("Rule '{}' is deleted for user '{}'".format(name, options.user))
-
+            print("Rule '{}' is deleted for user '{}'".format(name.decode('utf-8'), user.name))
 
 
 def convertRules(kopano_rule, rule_key, rule, exception=False):
@@ -1114,7 +1162,10 @@ def main():
 
     server = kopano.Server(options)
     if options.user:
-        kopano_rule()
+        kopano_rule(server=server, user=options.user, listrules=options.listrules, rule=options.rule,
+                    state=options.state, emptyRules=options.emptyRules, rulename=options.createrule,
+                    conditions=options.conditions, actions=options.actions, exceptions=options.exceptions,
+                    StopProcessingRules=options.StopProcessingRules, CreateFolder=options.CreateFolder)
 
     if options.importFile:
         exchange_rules()
