@@ -26,7 +26,10 @@ def main():
         found_items = []
         global_break = None
         print('running for user {}'.format(user.name))
-        for folder in user.folders():
+        blacklist = [user.contacts.name, user.calendar.name, user.tasks.name, user.notes.name]
+        for folder in user.store.folders():
+            if folder.name in blacklist:
+                continue
             if global_break:
                 break
             for item in folder.items():
@@ -62,8 +65,7 @@ def main():
                     print('removing item {}'.format(item.subject))
                     user.store.delete(item)
                 else:
-                    print('{} -> {}'.format(item.folder.name, item.subject))
-
+                    print('{} -> {} -> {}'.format(item.folder.name, item.subject, item.prop(PR_CREATION_TIME).value))
 
 
 
