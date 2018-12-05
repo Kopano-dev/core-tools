@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import kopano
 import sys
@@ -23,6 +23,8 @@ def main():
     options, args = opt_args()
     server = kopano.Server(options)
     for user in server.users():
+        if not user.store:
+            continue
         found_items = []
         global_break = None
         print('running for user {}'.format(user.name))
@@ -30,6 +32,7 @@ def main():
         for folder in user.store.folders():
             if folder.name in blacklist:
                 continue
+
             if global_break:
                 break
             for item in folder.items():
@@ -62,10 +65,21 @@ def main():
         if len(found_items) > 0:
             for item in found_items:
                 if options.delete:
-                    print('removing item {}'.format(item.subject))
+                    try:
+                        print('removing item {}'.format(item.subject))
+                    except UnicodeEncodeError:
+                        print('removing item {}'.format(item.subject.encode('utf-8')))
                     user.store.delete(item)
                 else:
-                    print('{} -> {} -> {}'.format(item.folder.name, item.subject, item.prop(PR_CREATION_TIME).value))
+                    try:
+                        print(
+                            '{} -> {} -> {}'.format(item.folder.name, item.subject,
+                                                    item.prop(PR_CREATION_TIME).value))
+                    except UnicodeEncodeError:
+                        print('{} -> {} -> {}'.format(item.folder.name.encode('utf-8'),
+                                                      item.subject.encode('utf-8'),
+                                                      item.prop(PR_CREATION_TIME).value))
+
 
 
 
