@@ -37,7 +37,7 @@ def main():
                 break
             for item in folder.items():
                 if options.until:
-                    submit_time = item.prop(PR_CREATION_TIME).value
+                    submit_time = item.prop(PR_LAST_MODIFICATION_TIME).value
                     check = datetime.strptime('{} 00:00:00'.format(options.until), '%Y-%m-%d 00:00:00')
                     if submit_time < check:
                         break
@@ -74,11 +74,11 @@ def main():
                     try:
                         print(
                             '{} -> {} -> {}'.format(item.folder.name, item.subject,
-                                                    item.prop(PR_CREATION_TIME).value))
+                                                    item.prop(PR_LAST_MODIFICATION_TIME).value))
                     except UnicodeEncodeError:
                         print('{} -> {} -> {}'.format(item.folder.name.encode('utf-8'),
                                                       item.subject.encode('utf-8'),
-                                                      item.prop(PR_CREATION_TIME).value))
+                                                      item.prop(PR_LAST_MODIFICATION_TIME).value))
 
 
 
