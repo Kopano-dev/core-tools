@@ -14,15 +14,18 @@ def main():
         sys.exit(1)
 
     for user in kopano.Server(options).users():
-        print(user.name)
+        try:
+            print(user.name)
+        except UnicodeEncodeError:
+            print(user.name.encode('utf-8'))
         store = user.store
         common = store.root.folder('IPM_COMMON_VIEWS')
         subtree = store.root.folder('IPM_SUBTREE')
         for folder in common.folders():
             try:
                 print('Copying folder {} to root directory'.format(folder.name))
-            except (UnicodeDecodeError, UnicodeEncodeError):
-                print('Copying folder to root directory')
+            except UnicodeEncodeError:
+                print('Copying folder {} to root directory'.format(folder.name.encode('utf-8')))
             if not options.dryrun:
                 common.move(folder, subtree)
 
