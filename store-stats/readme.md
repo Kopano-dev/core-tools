@@ -9,6 +9,10 @@ The following script prints the folder stat per store
 
     python store-stats -u <username> 
     
+#### List for public store
+
+    python store-stats --public
+    
 #### List multiple users 
 
     python store-stats -u <username>  -u <username> 
