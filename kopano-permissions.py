@@ -4,6 +4,7 @@
 #
 
 import kopano
+from kopano.defs import RIGHT_NAME, EID_EVERYONE
 from MAPI.Util import *
 import sys
 import binascii
@@ -55,6 +56,7 @@ def getpermissions(folder, customname=None):
                          ecRightsTemplateOwner: 'Owner',
                          ecRightsFullControl: 'Full control'
                          }
+
     perfolder = {'No rights': [],
                  'Readonly': [],
                  'Secretary': [],
@@ -70,13 +72,23 @@ def getpermissions(folder, customname=None):
     acltable = table.QueryRows(-1, 0)
 
     for acl in acltable:
+        name=None
         for prop in acl:
+            print(prop)
             if prop.ulPropTag == 0x6672001F:
                 name = prop.Value
             if prop.ulPropTag == 0x66730003:
-                permission = 'Other'
+
                 if definepermissions.get(prop.Value):
                     permission = definepermissions[prop.Value]
+                else:
+                    permission = 'Other'
+                    r = []
+                    for right, right_name in RIGHT_NAME.items():
+                        if prop.Value & right:
+                            r.append(right_name)
+                    if len(r) > 0:
+                        name = '{}: {}'.format(name, ' '.join(r))
 
                 perfolder[permission].append(name)
 
@@ -128,12 +140,12 @@ def listpermissions(user, options):
             if delnames['users'][deluser]['delegate']:
                 delegate = u"\u2713"
         except:
-            delegate = 'x'
+            delegate = u"\u2717"
 
         if delnames['users'][deluser]['private']:
             private = u"\u2713"
         else:
-            private = 'x'
+            private =u"\u2717"
 
         if delegate or private:
             tabledelagate_data.append([deluser, private, delegate])
@@ -153,6 +165,7 @@ def listpermissions(user, options):
         folders = store.root.folders()
     else:
         folders = store.folders()
+
     for folder in folders:
         perfolder = getpermissions(folder)
         folderindent = ''
@@ -210,8 +223,10 @@ def calculatepermissions():
 
 
 def removepermissions(user, options, folder, customname=None):
-
-    removeuser = kopano.Server(options).user(options.remove).fullname
+    if options.remove.lower() == 'everyone':
+        removeuser = 'Everyone'
+    else:
+        removeuser = kopano.Server(options).user(options.remove).fullname
 
     acl_table = folder.mapiobj.OpenProperty(PR_ACL_TABLE, IID_IExchangeModifyTable, 0, 0)
     table = acl_table.GetTable(0)
@@ -246,12 +261,18 @@ def create_table_row(foldername, options, permission):
     acltable = table.QueryRows(-1, 0)
 
     newvalue = len(acltable) + 1
-    adduser = kopano.Server(options).user(options.add)
+    if options.add.lower() == 'everyone':
+        adduser = binascii.hexlify(EID_EVERYONE)
+        fullname = 'Everyone'
+    else:
+        adduser = kopano.Server(options).user(options.add).userid
+        fullname = adduser.fullname
+
     rowlist = [ROWENTRY(
         ROW_ADD,
-        [SPropValue(0x0FFF0102, binascii.unhexlify(adduser.userid)),
+        [SPropValue(0x0FFF0102, binascii.unhexlify(adduser)),
          SPropValue(0x66710014, newvalue),
-         SPropValue(0x6672001F, adduser.fullname),
+         SPropValue(0x6672001F, fullname),
          SPropValue(0x66730003, permission)])]
 
     acl_table.ModifyTable(0, rowlist)
