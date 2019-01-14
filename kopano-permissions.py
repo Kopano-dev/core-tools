@@ -36,6 +36,7 @@ def opt_args():
     parser = kopano.parser('skpcfUP')
     parser.add_option("--user", dest="user", action="store", help="Run script for user ")
     parser.add_option("--list", dest="printrules", action="store_true", help="Print rules")
+    parser.add_option("--list-all", dest="printrulesall", action="store_true", help="Print rules including the 'hidden' folders")
     parser.add_option("--details", dest="printdetails", action="store_true", help="Print more details")
     parser.add_option("--calculate", dest="calc", action="store_true", help="Calculate persmissions")
     parser.add_option("--remove", dest="remove", action="store", help="Remove permissions for this user")
@@ -73,10 +74,10 @@ def getpermissions(folder, customname=None):
             if prop.ulPropTag == 0x6672001F:
                 name = prop.Value
             if prop.ulPropTag == 0x66730003:
-                try:
+                permission = 'Other'
+                if definepermissions.get(prop.Value):
                     permission = definepermissions[prop.Value]
-                except KeyError:
-                    permission = 'Other'
+
                 perfolder[permission].append(name)
 
     return perfolder
@@ -96,9 +97,7 @@ def getdelegateuser(user):
 
     if fbProps[0].ulPropTag == PR_SCHDINFO_DELEGATE_ENTRYIDS:
         for i in range(0, len(fbProps[0].Value)):
-            try:
-                names['users'][fbProps[1].Value[i]]
-            except:
+            if not names['users'].get(fbProps[1].Value[i]):
                 names['users'][fbProps[1].Value[i]] = {}
                 names['users'][fbProps[1].Value[i]]['private'] = bool(fbProps[2].Value[i])
 
@@ -109,9 +108,7 @@ def getdelegateuser(user):
                     if prop.ulPropTag == 268370178:
                         entryid = prop.ulPropTag
                     if prop.ulPropTag == 805371935:
-                        try:
-                            names['users'][prop.Value]
-                        except:
+                        if not names['users'].get(prop.Value):
                             names['users'][prop.Value] = {}
 
                         names['users'][prop.Value]['delegate'] = True
@@ -144,6 +141,7 @@ def listpermissions(user, options):
     #acl rules
     table_header = ["Folder", "Fullcontroll", "Owner", "Secretary", "Readonly", "No rights", "Other"]
     tableacl_data =[]
+
     store = user.store
     if not options.folders:
         perfolder = getpermissions(store)
@@ -151,12 +149,17 @@ def listpermissions(user, options):
                            '\n'.join(perfolder['Secretary']),
                            '\n'.join(perfolder['Readonly']), '\n'.join(perfolder['No rights']),
                            '\n'.join(perfolder['Other'])])
-
-    for folder in store.folders():
+    if options.printrulesall:
+        folders = store.root.folders()
+    else:
+        folders = store.folders()
+    for folder in folders:
         perfolder = getpermissions(folder)
         folderindent = ''
-        for i in range(0, len(folder.path.split('/')) - 1):
-            folderindent += '-'
+        if folder.path:
+            for i in range(0, len(folder.path.split('/')) - 1):
+                folderindent += '-'
+
         foldername = '%s %s ' % (folderindent, folder.name)
         tableacl_data.append([foldername, '\n'.join(perfolder['Full control']), '\n'.join(perfolder['Owner']),
                            '\n'.join(perfolder['Secretary']),
@@ -165,7 +168,7 @@ def listpermissions(user, options):
 
 
     print('Store information {}'.format(user.name))
-    if len(tabledelagate_data) > 1:
+    if len(tabledelagate_data) > 0:
         print('Delegate information:')
         print(tabulate(tabledelagate_data, headers=tabledelagate_header, tablefmt="grid"))
 
@@ -235,6 +238,24 @@ def removepermissions(user, options, folder, customname=None):
         print('removing {} from the permission table for folder {}'.format(removeuser, foldername))
 
 
+def create_table_row(foldername, options, permission):
+    acl_table = foldername.mapiobj.OpenProperty(PR_ACL_TABLE, IID_IExchangeModifyTable, 0, 0)
+    table = acl_table.GetTable(0)
+    # cols = table.QueryColumns(TBL_ALL_COLUMNS)
+    table.SetColumns([PR_ENTRYID, PR_MEMBER_ID, CHANGE_PROP_TYPE(PR_MEMBER_NAME, PT_UNICODE), PR_MEMBER_RIGHTS], TBL_BATCH)
+    acltable = table.QueryRows(-1, 0)
+
+    newvalue = len(acltable) + 1
+    adduser = kopano.Server(options).user(options.add)
+    rowlist = [ROWENTRY(
+        ROW_ADD,
+        [SPropValue(0x0FFF0102, binascii.unhexlify(adduser.userid)),
+         SPropValue(0x66710014, newvalue),
+         SPropValue(0x6672001F, adduser.fullname),
+         SPropValue(0x66730003, permission)])]
+
+    acl_table.ModifyTable(0, rowlist)
+
 def addpermissions(user, options, foldername):
     if not options.permission:
         print('please use: {} --user <username> --add  <username> --permission <permission>'.format(sys.argv[0]))
@@ -252,22 +273,12 @@ def addpermissions(user, options, foldername):
     else:
         permission = int(options.permission, 0)
 
-    acl_table = foldername.mapiobj.OpenProperty(PR_ACL_TABLE, IID_IExchangeModifyTable, 0, 0)
-    table = acl_table.GetTable(0)
-    cols = table.QueryColumns(TBL_ALL_COLUMNS)
-    table.SetColumns([PR_ENTRYID, PR_MEMBER_ID, CHANGE_PROP_TYPE(PR_MEMBER_NAME, PT_UNICODE), PR_MEMBER_RIGHTS], TBL_BATCH)
-    acltable = table.QueryRows(-1, 0)
+    # if container class is IPF.Appointment  add permission to the Freebusy Data folder as wel
+    if foldername.container_class == 'IPF.Appointment':
+        freebusy = user.store.root.folder('Freebusy Data')
+        create_table_row(freebusy, options, permission)
 
-    newvalue = len(acltable) + 1
-    adduser = kopano.Server(options).user(options.add)
-    rowlist = [ROWENTRY(
-        ROW_ADD,
-        [SPropValue(0x0FFF0102, binascii.unhexlify(adduser.userid)),
-         SPropValue(0x66710014, newvalue),
-         SPropValue(0x6672001F, adduser.fullname),
-         SPropValue(0x66730003, permission)])]
-
-    acl_table.ModifyTable(0, rowlist)
+    create_table_row(foldername, options, permission)
 
     if foldername.name == user.name:
         foldername = 'Main store'
@@ -290,7 +301,7 @@ def main():
     server = kopano.Server(options)
     user = server.user(options.user)
 
-    if options.printrules:
+    if options.printrules or options.printrulesall:
         listpermissions(user, options)
         sys.exit(0)
 
