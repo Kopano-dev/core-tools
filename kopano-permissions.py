@@ -126,14 +126,14 @@ def listpermissions(user, options):
 
         try:
             if delnames['users'][deluser]['delegate']:
-                delegate = True
+                delegate = u"\u2713"
         except:
-            delegate = False
+            delegate = 'x'
 
         if delnames['users'][deluser]['private']:
-            private = True
+            private = u"\u2713"
         else:
-            private = False
+            private = 'x'
 
         if delegate or private:
             tabledelagate_data.append([deluser, private, delegate])
@@ -170,7 +170,7 @@ def listpermissions(user, options):
     print('Store information {}'.format(user.name))
     if len(tabledelagate_data) > 0:
         print('Delegate information:')
-        print(tabulate(tabledelagate_data, headers=tabledelagate_header, tablefmt="grid"))
+        print(tabulate(tabledelagate_data, headers=tabledelagate_header, tablefmt="grid", stralign="center"))
 
     print('Folder permissions:')
     print(tabulate(tableacl_data, headers=table_header, tablefmt="grid"))
