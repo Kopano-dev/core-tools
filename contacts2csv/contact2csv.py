@@ -281,30 +281,30 @@ def main():
                 if not new_item.get_prop(extra['PR_DISPLAY_NAME_FULL']) and \
                         (new_item.get_prop(extra['PR_MAIL']) or new_item.get_prop(extra['PR_EMAIL'])):
                     try:
-                        firstname = new_item.prop(PR_GIVEN_NAME).value
+                        firstname = new_item.prop(PR_GIVEN_NAME).value.decode('utf-8')
                     except kopano.errors.NotFoundError:
                         firstname = ''
                     try:
-                        middlename = new_item.prop(PR_MIDDLE_NAME).value
+                        middlename = new_item.prop(PR_MIDDLE_NAME).value.decode('utf-8')
                     except kopano.errors.NotFoundError:
                         middlename = ''
                     try:
-                        lastname =new_item.prop(PR_SURNAME).value
+                        lastname = new_item.prop(PR_SURNAME).value.decode('utf-8')
                     except kopano.errors.NotFoundError:
                         lastname = ''
 
                     if new_item.get_prop(extra['PR_MAIL']):
                         email = new_item.prop(extra['PR_MAIL']).value
-                        new_item.create_prop(extra['PR_EMAIL'], new_item.prop(extra['PR_MAIL']).value.decode('utf-8'))
+                        new_item.create_prop(extra['PR_MAIL'], email)
                     else:
                         email = new_item.prop(extra['PR_EMAIL']).value
-                        new_item.create_prop(extra['PR_MAIL'], new_item.prop(extra['PR_EMAIL']).value.decode('utf-8'))
+                        new_item.create_prop(extra['PR_EMAIL'], email)
 
                     fullname_format = 'lastname, firstname, middlename (email)'
                     if options.format:
                         fullname_format = options.format
                     fullname_format = fullname_format.replace('lastname', lastname).replace('firstname', firstname).replace('middlename', middlename).replace('email', email)
-                    new_item.create_prop(extra['PR_DISPLAY_NAME_FULL'], fullname_format.decode('utf-8'))
+                    new_item.create_prop(extra['PR_DISPLAY_NAME_FULL'], fullname_format)
 
                 itemcount += 1
 
