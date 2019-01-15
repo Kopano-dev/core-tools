@@ -317,29 +317,9 @@ def create_table_row_permission(foldername, options, permission):
     acl_table.ModifyTable(0, rowlist)
 
 def addpermissions(user, options, foldername):
-    if not options.permission:
+    if not options.permission and not options.delegate:
         print('please use: {} --user <username> --add  <username> --permission <permission>'.format(sys.argv[0]))
         sys.exit(1)
-
-    convertrules = {"norights": ecRightsTemplateNoRights,
-                    "readonly": ecRightsTemplateReadOnly,
-                    "secretary": ecRightsTemplateSecretary,
-                    "owner": ecRightsTemplateOwner,
-                    "fullcontrol": ecRightsFullControl
-                    }
-
-    if convertrules.get(options.permission.lower()):
-        permission = convertrules[options.permission.lower()]
-    else:
-        permission = int(options.permission, 0)
-
-    # if container class is IPF.Appointment  add permission to the Freebusy Data folder as wel
-    try:
-        if foldername.container_class == 'IPF.Appointment':
-            freebusy = user.store.root.folder('Freebusy Data')
-            create_table_row_permission(freebusy, options, permission)
-    except AttributeError:
-        pass
 
     if options.delegate:
         flags = []
@@ -354,6 +334,29 @@ def addpermissions(user, options, foldername):
             print('Add {} as delegate with {}'.format(delegateuser.name, ' '.join(flags)))
         else:
             print('Add {} as delegate'.format(delegateuser.name))
+
+    if not options.permission and options.delegate:
+        sys.exit(0)
+
+    convertrules = {"norights": ecRightsTemplateNoRights,
+                    "readonly": ecRightsTemplateReadOnly,
+                    "secretary": ecRightsTemplateSecretary,
+                    "owner": ecRightsTemplateOwner,
+                    "fullcontrol": ecRightsFullControl
+                    }
+
+    if convertrules.get(options.permission.lower()):
+        permission = convertrules[options.permission.lower()]
+    else:
+        permission = int(options.permission, 0)
+
+    # if container class is IPF.Appointment add permission to the Freebusy Data folder as wel
+    try:
+        if foldername.container_class == 'IPF.Appointment':
+            freebusy = user.store.root.folder('Freebusy Data')
+            create_table_row_permission(freebusy, options, permission)
+    except AttributeError:
+        pass
 
 
 
