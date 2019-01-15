@@ -45,6 +45,9 @@ def opt_args():
     parser.add_option("--permission", dest="permission", action="store",
                       help="Set permissions [norights|readonly|secretary|owner|fullcontrol] or use the calculate "
                            "options to give a custom permission set")
+    parser.add_option("--delegate", dest="delegate", action="store_true", help="Add user as delegate")
+    parser.add_option("--private", dest="private", action="store_true", help="Allow delegate to see private items")
+    parser.add_option("--copy", dest="copy", action="store_true", help="Send copy of meeting request to delegate")
 
     return parser.parse_args()
 
@@ -94,6 +97,13 @@ def getpermissions(folder, customname=None):
 
 
 def getdelegateuser(user):
+    '''
+    Delegates are stored in 2 places
+    the first one is for the delegate info and if the delegate can see private items.
+    The second one is a rule to check if the meeting request need to be forwarded to the delegate
+    :param user:
+    :return: dict
+    '''
     inbox = user.store.inbox
 
     names = {}
@@ -105,23 +115,28 @@ def getdelegateuser(user):
         [PR_SCHDINFO_DELEGATE_ENTRYIDS, CHANGE_PROP_TYPE(PR_SCHDINFO_DELEGATE_NAMES, PT_MV_UNICODE), PR_DELEGATE_FLAGS],
         0)
 
+    # Check if user is allowed to see private items
     if fbProps[0].ulPropTag == PR_SCHDINFO_DELEGATE_ENTRYIDS:
         for i in range(0, len(fbProps[0].Value)):
-            if not names['users'].get(fbProps[1].Value[i]):
-                names['users'][fbProps[1].Value[i]] = {}
-                names['users'][fbProps[1].Value[i]]['private'] = bool(fbProps[2].Value[i])
+            entryid = binascii.hexlify(fbProps[0].Value[i])
+            # if not names['users'].get(fbProps[1].Value[i]):
+            if not names['users'].get(entryid):
+                names['users'][entryid] = {}
+                names['users'][entryid]['name'] = fbProps[1].Value[i]
+                names['users'][entryid]['private'] = bool(fbProps[2].Value[i])
 
+    # check if a meeting request need to be sent to the delegate
     for rule in inbox.rules():
         if rule.name == 'Delegate Meetingrequest service':
             for dellist in rule.mapirow[1719664894].lpAction[0].actobj.lpadrlist:
                 for prop in dellist:
                     if prop.ulPropTag == 268370178:
-                        entryid = prop.ulPropTag
+                        entryid = binascii.hexlify(prop.Value)
+                        if not names['users'].get(entryid):
+                            names['users'][entryid] = {}
                     if prop.ulPropTag == 805371935:
-                        if not names['users'].get(prop.Value):
-                            names['users'][prop.Value] = {}
-
-                        names['users'][prop.Value]['delegate'] = True
+                        names['users'][entryid]['name'] = prop.Value ## XXX add names here as well as pyko adds the username for private items
+                        names['users'][entryid]['delegate'] = True
 
     return names
 
@@ -140,13 +155,13 @@ def listpermissions(user, options):
         except:
             delegate = u"\u2717"
 
-        if delnames['users'][deluser]['private']:
+        if delnames['users'][deluser].get('private'):
             private = u"\u2713"
         else:
             private =u"\u2717"
 
         if delegate or private:
-            tabledelagate_data.append([deluser, private, delegate])
+            tabledelagate_data.append([delnames['users'][deluser]['name'], private, delegate])
 
     #acl rules
     table_header = ["Folder", "Fullcontroll", "Owner", "Secretary", "Readonly", "No rights", "Other"]
@@ -223,8 +238,34 @@ def calculatepermissions():
 def removepermissions(user, options, folder, customname=None):
     if options.remove.lower() == 'everyone':
         removeuser = 'Everyone'
+        remuser = None
     else:
-        removeuser = kopano.Server(options).user(options.remove).fullname
+        remuser = kopano.Server(options).user(options.remove)
+        removeuser = remuser.fullname
+
+    # so not remove folder if delegate is passed and no folder
+    if options.delegate:
+        if not remuser:
+            print('everyone can not be removed at the moment with the script')
+        else:
+            flags = []
+            if options.private:
+                flags.append('see_private')
+            if options.copy:
+                flags.append('send_copy')
+            try:
+                dlg = user.delegation(remuser)
+                if len(flags) == 0:
+                    user.delete(dlg)
+                    print('removing delegate permission for user {}'.format(remuser.name))
+                else:
+                    dlg.flags = [f for f in dlg.flags if f not in flags]
+                    print('removing {} for delegate user {}'.format(' '.join(flags), remuser.name))
+            except kopano.errors.NotFoundError:
+                print('user {} is not a delegate'.format(remuser.name))
+
+    if not options.folders and options.delegate:
+        sys.exit(0)
 
     acl_table = folder.mapiobj.OpenProperty(PR_ACL_TABLE, IID_IExchangeModifyTable, 0, 0)
     table = acl_table.GetTable(0)
@@ -251,7 +292,7 @@ def removepermissions(user, options, folder, customname=None):
         print('removing {} from the permission table for folder {}'.format(removeuser, foldername))
 
 
-def create_table_row(foldername, options, permission):
+def create_table_row_permission(foldername, options, permission):
     acl_table = foldername.mapiobj.OpenProperty(PR_ACL_TABLE, IID_IExchangeModifyTable, 0, 0)
     table = acl_table.GetTable(0)
     table.SetColumns([PR_ENTRYID, PR_MEMBER_ID, CHANGE_PROP_TYPE(PR_MEMBER_NAME, PT_UNICODE), PR_MEMBER_RIGHTS], TBL_BATCH)
@@ -262,8 +303,9 @@ def create_table_row(foldername, options, permission):
         adduser = binascii.hexlify(EID_EVERYONE)
         fullname = 'Everyone'
     else:
-        adduser = kopano.Server(options).user(options.add).userid
-        fullname = adduser.fullname
+        newuser = kopano.Server(options).user(options.add)
+        adduser = newuser.userid
+        fullname = newuser.fullname
 
     rowlist = [ROWENTRY(
         ROW_ADD,
@@ -294,9 +336,26 @@ def addpermissions(user, options, foldername):
     # if container class is IPF.Appointment  add permission to the Freebusy Data folder as wel
     if foldername.container_class == 'IPF.Appointment':
         freebusy = user.store.root.folder('Freebusy Data')
-        create_table_row(freebusy, options, permission)
+        create_table_row_permission(freebusy, options, permission)
 
-    create_table_row(foldername, options, permission)
+    if options.delegate:
+        flags = []
+        delegateuser = kopano.Server(options).user(options.add)
+        dlg = user.delegation(delegateuser, create=True)
+        if options.private:
+            flags.append('see_private')
+        if options.copy:
+            flags.append('send_copy')
+        if len(flags) > 0:
+            dlg.flags += flags
+            print('Add {} as delegate with {}'.format(delegateuser.name, ' '.join(flags)))
+        else:
+            print('Add {} as delegate'.format(delegateuser.name))
+
+
+
+    create_table_row_permission(foldername, options, permission)
+
 
     if foldername.name == user.name:
         foldername = 'Main store'
@@ -335,7 +394,6 @@ def main():
                 addpermissions(user, options, folder)
         else:
             addpermissions(user, options, user.store)
-
 
 if __name__ == "__main__":
     main()
