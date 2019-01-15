@@ -67,14 +67,12 @@ def getpermissions(folder, customname=None):
 
     acl_table = folder.mapiobj.OpenProperty(PR_ACL_TABLE, IID_IExchangeModifyTable, 0, 0)
     table = acl_table.GetTable(0)
-    cols = table.QueryColumns(TBL_ALL_COLUMNS)
     table.SetColumns([PR_ENTRYID, PR_MEMBER_ID, CHANGE_PROP_TYPE(PR_MEMBER_NAME, PT_UNICODE), PR_MEMBER_RIGHTS], TBL_BATCH)
     acltable = table.QueryRows(-1, 0)
 
     for acl in acltable:
-        name=None
+        name = None
         for prop in acl:
-            print(prop)
             if prop.ulPropTag == 0x6672001F:
                 name = prop.Value
             if prop.ulPropTag == 0x66730003:
@@ -88,7 +86,7 @@ def getpermissions(folder, customname=None):
                         if prop.Value & right:
                             r.append(right_name)
                     if len(r) > 0:
-                        name = '{}: {}'.format(name, ' '.join(r))
+                        name = '{}: {}'.format(name, ', '.join(r).replace('_',' '))
 
                 perfolder[permission].append(name)
 
@@ -230,7 +228,6 @@ def removepermissions(user, options, folder, customname=None):
 
     acl_table = folder.mapiobj.OpenProperty(PR_ACL_TABLE, IID_IExchangeModifyTable, 0, 0)
     table = acl_table.GetTable(0)
-    cols = table.QueryColumns(TBL_ALL_COLUMNS)
     table.SetColumns([PR_ENTRYID, PR_MEMBER_ID, CHANGE_PROP_TYPE(PR_MEMBER_NAME, PT_UNICODE), PR_MEMBER_RIGHTS], TBL_BATCH)
     acltable = table.QueryRows(-1, 0)
     remove = False
@@ -250,13 +247,13 @@ def removepermissions(user, options, folder, customname=None):
             foldername = customname
         else:
             foldername = folder.name
+
         print('removing {} from the permission table for folder {}'.format(removeuser, foldername))
 
 
 def create_table_row(foldername, options, permission):
     acl_table = foldername.mapiobj.OpenProperty(PR_ACL_TABLE, IID_IExchangeModifyTable, 0, 0)
     table = acl_table.GetTable(0)
-    # cols = table.QueryColumns(TBL_ALL_COLUMNS)
     table.SetColumns([PR_ENTRYID, PR_MEMBER_ID, CHANGE_PROP_TYPE(PR_MEMBER_NAME, PT_UNICODE), PR_MEMBER_RIGHTS], TBL_BATCH)
     acltable = table.QueryRows(-1, 0)
 
