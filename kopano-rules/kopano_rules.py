@@ -1138,7 +1138,10 @@ def exchange_rules():
                 print(json.dumps(rule, indent=4))
 
             continue
-        kopano_rule()
+        kopano_rule(server=server, user=options.user, listrules=options.listrules, rule=options.rule,
+                    state=options.state, emptyRules=options.emptyRules, rulename=options.createrule,
+                    conditions=options.conditions, actions=options.actions, exceptions=options.exceptions,
+                    StopProcessingRules=options.StopProcessingRules, CreateFolder=options.CreateFolder)
 
 def main():
     global server
