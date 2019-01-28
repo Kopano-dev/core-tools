@@ -8,7 +8,12 @@ import sys
 import kopano
 from MAPI.Util import *
 
-
+if sys.hexversion >= 0x03000000:
+    def _encode(s):
+        return s
+else: # pragma: no cover
+    def _encode(s):
+        return s.encode(sys.stdout.encoding or 'utf8')
 
 def opt_args():
     parser = kopano.parser('skpcfmUP')
@@ -65,9 +70,9 @@ def deleteitems(options, user, folder):
             if date <= daysbeforedeleted:
                 if options.verbose:
                     if options.archive:
-                        print('Archiving \'{}\''.format(item.subject.decode('utf-8')))
+                        print('Archiving \'{}\''.format(_encode(item.subject)))
                     else:
-                        print('Deleting \'{}\''.format(item.subject.decode('utf-8')))
+                        print('Deleting \'{}\''.format(_encode(item.subject)))
 
                 if not options.dryrun:
                     if options.archive:
@@ -81,11 +86,11 @@ def deleteitems(options, user, folder):
     if options.progressbar:
         pbar.finish()
     if options.archive:
-        print('Archived {} item(s) for user \'{}\' in folder \'{}\' to folder \'{}\''.format(itemcount, user.name.decode('utf-8'),
-                                                                                             folder.name.decode('utf-8'),
-                                                                                             archive_folder.name.decode('utf-8')))
+        print('Archived {} item(s) for user \'{}\' in folder \'{}\' to folder \'{}\''.format(itemcount, _encode(user.name),
+                                                                                             _encode(folder.name),
+                                                                                             _encode(archive_folder.name)))
     else:
-        print('Deleted {}  item(s) for user \'{}\' in folder \'{}\''.format(itemcount, user.name.decode('utf-8'), folder.name.decode('utf-8')))
+        print('Deleted {}  item(s) for user \'{}\' in folder \'{}\''.format(itemcount, _encode(user.name), _encode(folder.name)))
 
     return itemcount
 
@@ -100,7 +105,7 @@ def main():
 
 
     user = kopano.Server(options).user(options.user)
-    print('Running script for \'{}\''.format(user.name))
+    print('Running script for \'{}\''.format(_encode(user.name)))
 
     if options.wastebasket:
             folder = user.store.wastebasket
@@ -111,7 +116,7 @@ def main():
             deleteitems(options, user, folder)
 
     '''
-    Loop over all the folders that are passed with the -f parameter 
+    Loop over all the folders that are passed with the -f parameter
     '''
     if options.folders:
         for folder in user.store.folders(options.folders):
