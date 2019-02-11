@@ -6,6 +6,7 @@ import kopano
 import sys
 from MAPI.Tags import *
 from datetime import datetime
+from kopano.errors import  NotFoundError
 
 def opt_args():
     parser = kopano.parser('skpfucmUP')
@@ -44,7 +45,11 @@ def main():
 
     if options.entryid:
         user = server.user(options.users[0])
-        item = user.store.item(options.entryid)
+        try:
+            item = user.store.item(options.entryid)
+        except NotFoundError:
+            print('Item with entryid not found in store of user {}'.format(user.name))
+            sys.exit(1)
         print('Deleting item {}'.format(item.subject))
         user.store.delete(item)
         sys.exit(0)
