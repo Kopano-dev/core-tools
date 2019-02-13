@@ -77,7 +77,9 @@ class KopanoRules():
 
 
     def _get_email(self, user):
-        if self.importFile:
+        emailIsSmtp = "SMTP" in user
+
+        if (self.importFile) and (not emailIsSmtp):
             if self.configFile:
                 user = self._legacyExchangeDN(user)
                 if not user:
@@ -145,14 +147,14 @@ class KopanoRules():
     def contain_word_sender_address(self):
         return_list = []
         for word in self.conditions:
-                return_list.append(SContentRestriction(1, 0xc1d0102, SPropValue(0x0C1D0102, str.encode(word))))
+                return_list.append(SContentRestriction(1, 0xc1d0102, SPropValue(0x0C1D0102, word.encode())))
 
         return return_list
 
     def contain_word_recipient_address(self):
         return_list = []
         for word in self.conditions:
-            return_list.append(SContentRestriction(1, 0x300b0102,SPropValue(0x300B0102, str.encode(word.upper()))))
+            return_list.append(SContentRestriction(1, 0x300b0102,SPropValue(0x300B0102, word.upper().encode())))
         if len(return_list) > 1:
             return SSubRestriction(0x0E12000D, SOrRestriction(return_list))
         else:
@@ -282,7 +284,8 @@ class KopanoRules():
             self.user = self.server.user(self.user)
             complete_tree = self.conditions[0]
 
-        self.folder = self.user.store.folder(complete_tree, create=self.CreateFolder)
+        folderPath = unicode(complete_tree, "utf-8")
+        self.folder = self.user.store.folder(folderPath, create=self.CreateFolder)
 
 
     def move_to(self):
@@ -828,20 +831,23 @@ def createrule(server, name, lastid, user, conditions=None, actions=None, except
         '''
             If the condition_rule is higher then 1 add the SOrRestriction attribute before the list
         '''
-
-        if condition_rule in SOrRestriction_list:
-            if len(conditionslist) > 1 or (conditionslist[0] and len(conditionslist[0]) > 1):
-                storeconditions.append(SOrRestriction(conditionslist[0]))
+        try:
+            if condition_rule in SOrRestriction_list:
+                if len(conditionslist) > 1 or (conditionslist[0] and len(conditionslist[0]) > 1):
+                    storeconditions.append(SOrRestriction(conditionslist[0]))
+                elif len(conditionslist) == 1:
+                    storeconditions.append(conditionslist[0][0])
             elif len(conditionslist) == 1:
-                storeconditions.append(conditionslist[0][0])
-        elif len(conditionslist) == 1:
-            storeconditions.append(conditionslist[0])
+                storeconditions.append(conditionslist[0])
+        except IndexError as e:
+            print('Error on rule condition: "{}"'.format(e))
+            return
 
     '''
     Search for actions that are known Kopano rules actions
     '''
     for action in actions:
-        splitactions = action.split(':')
+        splitactions = action.split(':', 1)
         action_rule = splitactions[0]
         if len(splitactions) > 1:
             action_var = splitactions[1].split(',')
@@ -867,7 +873,7 @@ def createrule(server, name, lastid, user, conditions=None, actions=None, except
     same as conditions with the differents that the SNotRestriction attibute is added to the rule
     '''
     for exception in exceptions:
-        splitexception = exception.split(':')
+        splitexception = exception.split(':', 1)
         exception_rule = splitexception[0]
         try:
             exception_var = splitexception[1].split(',')
@@ -891,13 +897,16 @@ def createrule(server, name, lastid, user, conditions=None, actions=None, except
         '''
         If the exceptionslist is higher then 1 add the SOrRestriction attribute before the list
         '''
-        if exception_rule in SOrRestriction_list:
-            if len(exceptionslist) > 1 or (exceptionslist[0] and len(exceptionslist[0]) > 1):
-                storeexceptions.append(SNotRestriction(SOrRestriction(exceptionslist[0])))
+        try:
+            if exception_rule in SOrRestriction_list:
+                if len(exceptionslist) > 1 or (exceptionslist[0] and len(exceptionslist[0]) > 1):
+                    storeexceptions.append(SNotRestriction(SOrRestriction(exceptionslist[0])))
+                elif len(exceptionslist) == 1:
+                    storeexceptions.append(SNotRestriction(exceptionslist[0][0]))
             elif len(exceptionslist) == 1:
-                storeexceptions.append(SNotRestriction(exceptionslist[0][0]))
-        elif len(exceptionslist) == 1:
-            storeconditions.append(exceptionslist[0])
+                storeconditions.append(exceptionslist[0])
+        except AttributeError as e:
+            print("Error on exception rule '{}'".format(e))
 
     #combine conditions and exceptions
     if len(storeexceptions) > 0:
@@ -957,14 +966,17 @@ def kopano_rule(server, user, listrules=False, rule=None, state=None, emptyRules
         if rowlist:
 
             rule_table.ModifyTable(0, rowlist)
-            print("Rule '{}' created ".format(rulename))
+            print(u"Rule '{}' created ".format(rulename).encode('utf-8'))
             sys.exit(0)
+
+            print("Rule "u'{}'" created ".format(options.createrule))
 
     if emptyRules:
         for rule in filters:
             rowlist, name = changerule(filters, rule[0].Value, 'delete')
             rule_table.ModifyTable(0, rowlist)
-            print("Rule '{}' is deleted for user '{}'".format(name.decode('utf-8'), user.name))
+            print("Rule "u'{}'" is deleted for user '{}'".format(name.decode('utf-8'), user.name))
+
 
 
 def convertRules(kopano_rule, rule_key, rule, exception=False):
@@ -972,6 +984,15 @@ def convertRules(kopano_rule, rule_key, rule, exception=False):
     if exception:
         exception_text = "ExceptIf"
     # kopano_rule = exchange_to_kopano['actions'][key]
+
+    try:
+        if type(rule[rule_key]) is unicode:
+            joinedRule = ''.join(rule[rule_key])
+            encodedRule = joinedRule.encode('utf-8')
+            rule[rule_key] = encodedRule
+    except KeyError as e:
+            print("KeyError on rule '{}'".format(e))
+            return
 
     if isinstance(rule[rule_key], bool):
         return kopano_rule['kopano_name']
@@ -988,7 +1009,11 @@ def convertRules(kopano_rule, rule_key, rule, exception=False):
                 join_list.append(tmp[kopano_rule['dict_key']])
             return '{}:{}'.format(kopano_rule['kopano_name'], ','.join(join_list))
         else:
-            return '{}:{}'.format(kopano_rule['kopano_name'], ','.join(rule[exchange_key]))
+            try:
+                return u'{}:{}'.format(kopano_rule['kopano_name'], ','.join(rule[exchange_key]))
+            except UnicodeEncodeError as e:
+                print("Rule sent UnicodeEncodeError, rule will be skipped.")
+                return None
 
     elif isinstance(rule[rule_key], dict):
         if isinstance(rule[kopano_rule['value_key']][kopano_rule['dict_key']], list):
@@ -1132,7 +1157,11 @@ def exchange_rules():
         options.exceptions = exceptions
         if not options.actions or (not options.conditions and not options.exceptions):
 
-            print('Rule "{}" does not have valid actions or conditions/exceptions'.format(rule['Name']))
+            try:
+                print('Rule "{}" does not have valid actions or conditions/exceptions'.format(rule['Name']))
+            except UnicodeEncodeError as e:
+                print("Rule sent UnicodeEncodeError, rule will be skipped.")
+
             if options.verbose:
                 print(rule['Description'])
                 print(json.dumps(rule, indent=4))
