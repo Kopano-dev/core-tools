@@ -1,12 +1,33 @@
-recreate-systemfolders
-======================
+# recreate-systemfolders
 
-Script that can recreate system folder*
+Script to re-create system folders. 
 
-## Usage
+**Note: Inbox can't be re-created**
+
+Supported folders
+- Calendar
+- Contacts
+- Drafts
+- Journal
+- Notes
+- Outbox
+- Sent Items
+- Deleted Items
+- Junk E-mail
+
+**Usage**
 ```python
-python recreate-systemfolders.py --user username --create foldername --systemfolder systemfoldername**
+python3 recreate-systemfolders.py --user username --create foldername --systemfolder systemfoldername**
 ```
+List of system folder parameter names:
 
-\* Inbox folder  can't be recreated. 
-\*\* Following systemfolders are available  calendar, contacts, drafts, journal, notes, outbox, sentmail, tasks, wastebasket, junk
+- calendar
+- contacts
+- drafts
+- journal
+- notes
+- outbox
+- sentmail
+- tasks
+- wastebasket
+- junk
