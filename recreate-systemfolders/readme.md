@@ -9,4 +9,4 @@ python recreate-systemfolders.py --user \<user\> --create <foldername> --systemf
 ```
 
 \* Inbox folder  can't be recreated. 
-\*\* Following systemfolders are available  calendar, contacts, drafts, journal, notes, outbox, sentmail, tasks, wastebasket
+\*\* Following systemfolders are available  calendar, contacts, drafts, journal, notes, outbox, sentmail, tasks, wastebasket, junk
