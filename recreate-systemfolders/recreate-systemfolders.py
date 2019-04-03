@@ -10,7 +10,7 @@ def opt_args():
     parser.add_option("--user", dest="user", action="store", help="Run script for user")
     parser.add_option("--create", dest="create", action="store", help="create folder")
     parser.add_option("--systemfolder", dest="systemfolder", action="store",
-                      help="available: calendar, contacts, drafts, journal, notes, outbox, sentmail, task, wastebasket")
+                      help="available: calendar, contacts, drafts, journal, notes, outbox, sentmail, task, wastebasket, junk")
     parser.add_option("--safe", dest="safe", action="store_true", help="won't delete the old system folder")
 
     return parser.parse_args()
@@ -32,7 +32,7 @@ def main():
     user = kopano.Server(options).user(options.user)
     print(user)
     whitelist = ['calendar', 'contacts', 'drafts', 'journal', 'notes', 'outbox', 'sentmail', 'tasks',
-                 'wastebasket']
+                 'wastebasket', 'junk']
     name2ipf={
         'calendar': u'IPF.Appointment',
         'contacts': u'IPF.Contact',
@@ -96,6 +96,11 @@ def main():
 
         if options.systemfolder in rootid:
             user.store.root.create_prop(rootid.get(options.systemfolder), binascii.unhexlify(tmp.entryid))
+
+        if options.systemfolder == 'junk':
+            add_ren = user.store.root.prop(PR_ADDITIONAL_REN_ENTRYIDS).value
+            add_ren[4] = binascii.unhexlify(tmp.entryid)
+            user.store.root.create_prop(PR_ADDITIONAL_REN_ENTRYIDS, add_ren)
 
         if options.safe and not options.create:
             print('\n\nEntryid of old {} folder :{}\nNew name is:{}'.format(oldname.decode('utf-8'),
