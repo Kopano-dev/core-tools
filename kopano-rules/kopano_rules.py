@@ -208,21 +208,25 @@ class KopanoRules():
                                 SPropertyRestriction(0, 0xe060040, SPropValue(0x0E060040, datehigh))])
 
     def name_in_to_cc(self):
-        return SPropertyRestriction(4, 0x59000b, SPropValue(0x0059000B, True))
+        return SPropertyRestriction(4, 0x59000b, SPropValue(0x59000b, True))
 
     def name_in_to(self):
-        return SPropertyRestriction(4, 0x57000b, SPropValue(0x0057000B, False))
+        return SPropertyRestriction(4, 0x57000b, SPropValue(0x057000B, False))
 
     def name_in_cc(self):
-        return SAndRestriction([SPropertyRestriction(4,0x57000b,SPropValue(0x0057000B, True)),
+        return SAndRestriction([SPropertyRestriction(4,0x57000b,SPropValue(0x57000b, True)),
                                 SNotRestriction(SContentRestriction(1,0xe04001f,SPropValue(0x0E04001F, u';'))),
                                 SPropertyRestriction(4,0xe03001f,SPropValue(0x0E03001F, u''))])
 
     def only_sent_to_me(self):
-        return SAndRestriction([SPropertyRestriction(4,0x57000b,SPropValue(0x0057000B, True)),
+        return SAndRestriction([SPropertyRestriction(4,0x57000b,SPropValue(0x57000b, True)),
                                 SNotRestriction(SContentRestriction(1,0xe04001f,SPropValue(0x0E04001F, u';'))),
                                 SPropertyRestriction(4,0xe03001f,SPropValue(0x0E03001F, u''))])
 
+    def name_in_bcc(self):
+        return SAndRestriction([SPropertyRestriction(4, 0x057000b, SPropValue(0x057000b, False)),
+                                SPropertyRestriction(4, 0x058000B, SPropValue(0x058000B, False)),
+                                SPropertyRestriction(4, 0x059000B, SPropValue(0x059000B, False))])
     def has_attachment(self):
         return SBitMaskRestriction(1, 0xe070003, 16)
 
@@ -634,8 +638,7 @@ def convertcondition(conditions): ## TODO make this nicer
 def convertaction(action, user,server):
 
     action_message = ''
-    movetype = {1: 'Move',
-                2: 'Copy',}
+
     try:
         countact = len(action.Value.lpAction)
     except AttributeError:

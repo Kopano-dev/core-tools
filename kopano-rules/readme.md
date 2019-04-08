@@ -64,6 +64,7 @@ Example ldap config file
 * received-from *
 * name-in-cc
 * name-in-to
+* name-in-bbc
 * name-in-to-cc
 * sent-to *
 * importance (Low, Normal or High)
@@ -117,6 +118,6 @@ Example ldap config file
 
 ### Known issue's
 * message-size and name-in-to are not working at the moment
-* list issues with name-in-cc and  name-in-to
+* list issues with name-in-cc, name-in-to and name-in-bcc
 * sensitivity  'normal' is not selectable in webapp
 * mark-as-read is not supported yet (should be in KC 8.7)
