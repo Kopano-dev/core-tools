@@ -2,7 +2,7 @@ import kopano
 from MAPI.Tags import *
 from kopano.errors import *
 from datetime import datetime
-
+import binascii
 def opt_args():
     parser = kopano.parser('skpcufUP')
     parser.add_option("--all", dest="all", action="store_true", help="Run script for all users")
@@ -30,46 +30,49 @@ def main():
                         if submit_time < check:
                             break
                     if item.message_class == u'IPM.Schedule.Meeting.Request':
-                        print('changing item {}'.format(item.subject))
-                        if item.prop(PR_SENT_REPRESENTING_ADDRTYPE_W) and item.prop(PR_SENT_REPRESENTING_ADDRTYPE_W).value == 'SMTP':
+                        try:
+                            print('changing item {}'.format(item.subject))
+                        except UnicodeEncodeError:
+                            print('changing item unknown')
+                        if item.get_prop(PR_SENT_REPRESENTING_ADDRTYPE_W) and item.prop(PR_SENT_REPRESENTING_ADDRTYPE_W).value == 'SMTP':
                             try:
                                 username = server.user(email=item.prop(PR_SENT_REPRESENTING_SEARCH_KEY).value.replace('SMTP:',''))
                                 item.create_prop(PR_SENT_REPRESENTING_SEARCH_KEY,'ZARAFA:{}'.format(username.email))
                                 item.create_prop(PR_SENT_REPRESENTING_ADDRTYPE_W, u'ZARAFA')
                                 item.create_prop(PR_SENT_REPRESENTING_EMAIL_ADDRESS_W, username.name)
-                                item.create_prop(PR_SENT_REPRESENTING_ENTRYID, username.entryid)
+                                item.create_prop(PR_SENT_REPRESENTING_ENTRYID, binascii.unhexlify(username.entryid))
                             except NotFoundError:
                                 pass
 
-                        if item.prop(PR_SENDER_ADDRTYPE_W) and item.prop(PR_SENDER_ADDRTYPE_W).value == 'SMTP':
+                        if item.get_prop(PR_SENDER_ADDRTYPE_W) and item.prop(PR_SENDER_ADDRTYPE_W).value == 'SMTP':
                             try:
                                 username = server.user(
                                     email=item.prop(PR_SENDER_SEARCH_KEY).value.replace('SMTP:', ''))
                                 item.create_prop(PR_SENDER_SEARCH_KEY,'ZARAFA:{}'.format(username.email))
                                 item.create_prop(PR_SENDER_ADDRTYPE_W, u'ZARAFA')
                                 item.create_prop(PR_SENDER_EMAIL_ADDRESS_W, username.name)
-                                item.create_prop(PR_SENDER_ENTRYID, username.entryid)
+                                item.create_prop(PR_SENDER_ENTRYID, binascii.unhexlify(username.entryid))
                             except NotFoundError:
                                 pass
-                        if item.prop(PR_RECEIVED_BY_ADDRTYPE_W) and item.prop(PR_RECEIVED_BY_ADDRTYPE_W).value == 'SMTP':
+                        if item.get_prop(PR_RECEIVED_BY_ADDRTYPE_W) and item.prop(PR_RECEIVED_BY_ADDRTYPE_W).value == 'SMTP':
                             try:
                                 username = server.user(
                                     email=item.prop(PR_RECEIVED_BY_SEARCH_KEY).value.replace('SMTP:', ''))
                                 item.create_prop(PR_RECEIVED_BY_SEARCH_KEY,'ZARAFA:{}'.format(username.email))
                                 item.create_prop(PR_RECEIVED_BY_ADDRTYPE_W, u'ZARAFA')
                                 item.create_prop(PR_RECEIVED_BY_EMAIL_ADDRESS_W, username.name)
-                                item.create_prop(PR_RECEIVED_BY_ENTRYID, username.entryid)
+                                item.create_prop(PR_RECEIVED_BY_ENTRYID, binascii.unhexlify(username.entryid))
 
                             except NotFoundError:
                                 pass
-                        if item.prop(PR_RCVD_REPRESENTING_ADDRTYPE_W) and item.prop(PR_RCVD_REPRESENTING_ADDRTYPE_W).value == 'SMTP':
+                        if item.get_prop(PR_RCVD_REPRESENTING_ADDRTYPE_W) and item.prop(PR_RCVD_REPRESENTING_ADDRTYPE_W).value == 'SMTP':
                             try:
                                 username = server.user(
                                     email=item.prop(PR_RCVD_REPRESENTING_SEARCH_KEY).value.replace('SMTP:', ''))
                                 item.create_prop(PR_RCVD_REPRESENTING_SEARCH_KEY,'ZARAFA:{}'.format(username.email))
                                 item.create_prop(PR_RCVD_REPRESENTING_ADDRTYPE_W, u'ZARAFA')
                                 item.create_prop(PR_RCVD_REPRESENTING_EMAIL_ADDRESS_W, username.name)
-                                item.create_prop(PR_RCVD_REPRESENTING_ENTRYID, username.entryid)
+                                item.create_prop(PR_RCVD_REPRESENTING_ENTRYID, binascii.unhexlify(username.entryid))
 
                             except NotFoundError:
                                 pass

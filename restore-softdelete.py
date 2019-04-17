@@ -70,7 +70,10 @@ def main():
             if restore:
                 deleted_folder.move(item, newfolder)
                 if options.verbose:
-                    print("item '{}' is restored in folder '{}'".format(item.subject, newfolder))
+                    try:
+                        print("item '{}' is restored in folder '{}'".format(item.subject, newfolder))
+                    except MAPIErrorNotFound:
+                        pass 
                     itemcount += 1
 
     if options.verbose:

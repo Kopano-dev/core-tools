@@ -1,9 +1,11 @@
 import kopano
 from MAPI.Tags import *
 
+
 def opt_args():
     parser = kopano.parser('skpcufUP')
     return parser.parse_args()
+
 
 def main():
     options, args = opt_args()
@@ -26,7 +28,6 @@ def main():
                 if not item.get_prop(0x80130003):
                     diff = item.prop(0x800e0040).value - item.prop(0x800d0040).value
                     item.create_prop(0x80130003, diff.seconds / 60)
-
 
 
 if __name__ == "__main__":
