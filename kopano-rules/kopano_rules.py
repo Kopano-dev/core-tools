@@ -9,6 +9,7 @@ import sys
 import binascii
 from tabulate import tabulate
 from datetime import datetime
+from optparse import OptionGroup
 import time
 try:
     import simplejson as json
@@ -27,21 +28,45 @@ except ImportError as e:
     pass
 
 def opt_args():
-    parser = kopano.parser('skpcUPv')
-    parser.add_option("--user", dest="user", action="store", help="Run script for user ")
-    parser.add_option("--list", dest="listrules", action="store_true", help="Print rules")
-    parser.add_option("--rule", dest="rule", action="store", type="int", help="rule id")
-    parser.add_option("--state", dest="state", action="store", help="enable, disable, delete, create")
-    parser.add_option("--empty-rules", dest="emptyRules", action="store_true", help="Empty the rules table for a specific user")
-    parser.add_option("--create", dest="createrule", action="store",
-                      help="create rule, use  --conditions and --actions")
-    parser.add_option("--conditions", dest="conditions", action="append", default=[], help="conditions")
-    parser.add_option("--actions", dest="actions", action="append", default=[],help="actions")
-    parser.add_option("--exceptions", dest="exceptions", action="append", default=[], help="exceptions")
-    parser.add_option("--stop-processing", dest="StopProcessingRules", action="store_true", help="Stop processing more rules on this message")
-    parser.add_option("--create-if-missing", dest="CreateFolder", action="store_true", help="Create folder if not exist")
-    parser.add_option("--import-exchange-rules", dest="importFile", action="store", help="Json file from exchange")
-    parser.add_option("--ldap-config", dest="configFile", action="store", help="Config file for LDAP options")
+    parser = kopano.parser('skpcUPvf')
+    group = OptionGroup(parser, "Common", "")
+    group.add_option("--user", dest="user", action="store", help="Run script for user ")
+    group.add_option("--list", dest="listrules", action="store_true", help="Print rules")
+    group.add_option("--rule", dest="rule", action="store", help="rule id's separated by , ")
+    parser.add_option_group(group)
+
+    group = OptionGroup(parser, "Manage rules", "")
+    group.add_option("--create", dest="createrule", action="store",
+                     help="create rule, use  --conditions and --actions")
+    group.add_option("--conditions", dest="conditions", action="append", default=[], help="conditions")
+    group.add_option("--actions", dest="actions", action="append", default=[], help="actions")
+    group.add_option("--exceptions", dest="exceptions", action="append", default=[], help="exceptions")
+    group.add_option("--state", dest="state", action="store", help="enable, disable, delete, create")
+    group.add_option("--empty-rules", dest="emptyRules", action="store_true",
+                     help="Empty the rules table for a specific user")
+    group.add_option("--stop-processing", dest="StopProcessingRules", action="store_true",
+                     help="Stop processing more rules on this message")
+    group.add_option("--create-if-missing", dest="CreateFolder", action="store_true", help="Create folder if not exist")
+    parser.add_option_group(group)
+
+    group = OptionGroup(parser, "Running rules", "")
+    group.add_option("--api-url", dest="api_url", action="store", help="kopano-rulesd server url")
+    group.add_option("--username", dest="username", action="store", help="username that will run the rules")
+    group.add_option("--password", dest="password", action="store", help="password of the user that runs the rules")
+    group.add_option("--ask-password", dest="ask_password", action="store_true", 
+                     help="Ask password to run rules on a store")
+    group.add_option("--api-config", dest="api_config", action="store",
+                     help="Config file that contains api url, username and/or password")
+    group.add_option("--ignore-state", dest="ignore_state", action="store_true",
+                     help="Ignore rules states (e.g. active, only active when OOF is enabled")
+
+    parser.add_option_group(group)
+
+    group = OptionGroup(parser, "Migration", "")
+    group.add_option("--import-exchange-rules", dest="importFile", action="store", help="Json file from exchange")
+    group.add_option("--ldap-config", dest="configFile", action="store", help="Config file for LDAP options")
+    parser.add_option_group(group)
+
     return parser.parse_args()
 
 
@@ -638,7 +663,8 @@ def convertcondition(conditions): ## TODO make this nicer
 def convertaction(action, user,server):
 
     action_message = ''
-
+    movetype = {1: 'Move',
+                2: 'Copy'}
     try:
         countact = len(action.Value.lpAction)
     except AttributeError:
@@ -952,11 +978,20 @@ def kopano_rule(server, user, listrules=False, rule=None, state=None, emptyRules
         sys.exit(0)
 
     if state:
-        rowlist, name = changerule(filters, rule, state)
-        if state == 'enable' or state == 'disable' or state == 'delete':
-            rule_table.ModifyTable(0, rowlist)
-            print("Rule '{}' is {}d for user '{}'".format(name.decode('utf-8'), state, user.name))
-            sys.exit(0)
+        if isinstance(rule, int):
+            rules = [rule]
+        else:
+            rules = rule.split(',')
+        for rule in rules:
+            try:
+                rule =  int(rule)
+            except ValueError:
+                continue
+            rowlist, name = changerule(filters, rule, state)
+            if state == 'enable' or state == 'disable' or state == 'delete':
+                rule_table.ModifyTable(0, rowlist)
+                print("Rule '{}' is {}d for user '{}'".format(name.decode('utf-8'), state, user.name))
+        sys.exit(0)
 
     if rulename:
         try:
