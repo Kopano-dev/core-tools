@@ -16,6 +16,9 @@ try:
 except ImportError:
     import json
 import re
+import importlib
+import getpass
+import requests
 
 try:
     from ldap3 import Server, Connection, MODIFY_ADD, MODIFY_REPLACE, MODIFY_DELETE, \
@@ -50,6 +53,8 @@ def opt_args():
     parser.add_option_group(group)
 
     group = OptionGroup(parser, "Running rules", "")
+    group.add_option("--run-rules", dest="run_rules", action="store_true", help="Run rules on mailbox")
+    group.add_option("--status-task", dest="rules_task", action="store", help="Get the current status of the task")
     group.add_option("--api-url", dest="api_url", action="store", help="kopano-rulesd server url")
     group.add_option("--username", dest="username", action="store", help="username that will run the rules")
     group.add_option("--password", dest="password", action="store", help="password of the user that runs the rules")
@@ -59,7 +64,6 @@ def opt_args():
                      help="Config file that contains api url, username and/or password")
     group.add_option("--ignore-state", dest="ignore_state", action="store_true",
                      help="Ignore rules states (e.g. active, only active when OOF is enabled")
-
     parser.add_option_group(group)
 
     group = OptionGroup(parser, "Migration", "")
@@ -963,7 +967,7 @@ def createrule(server, name, lastid, user, conditions=None, actions=None, except
 
     return rowlist
 
-def kopano_rule(server, user, listrules=False, rule=None, state=None, emptyRules=False, rulename=None, conditions=None,
+def kopano_rule(server, user, listrules=False, rules=None, state=None, emptyRules=False, rulename=None, conditions=None,
                 actions=None, exceptions=None, StopProcessingRules=False, CreateFolder=False):
     user = server.user(user)
     rule_table = user.store.inbox.mapiobj.OpenProperty(PR_RULES_TABLE, IID_IExchangeModifyTable, 0, 0)
@@ -978,13 +982,9 @@ def kopano_rule(server, user, listrules=False, rule=None, state=None, emptyRules
         sys.exit(0)
 
     if state:
-        if isinstance(rule, int):
-            rules = [rule]
-        else:
-            rules = rule.split(',')
         for rule in rules:
             try:
-                rule =  int(rule)
+                rule = int(rule)
             except ValueError:
                 continue
             rowlist, name = changerule(filters, rule, state)
@@ -1007,7 +1007,6 @@ def kopano_rule(server, user, listrules=False, rule=None, state=None, emptyRules
             print(u"Rule '{}' created ".format(rulename).encode('utf-8'))
             sys.exit(0)
 
-            print("Rule "u'{}'" created ".format(options.createrule))
 
     if emptyRules:
         for rule in filters:
@@ -1205,10 +1204,52 @@ def exchange_rules():
                 print(json.dumps(rule, indent=4))
 
             continue
-        kopano_rule(server=server, user=options.user, listrules=options.listrules, rule=options.rule,
+        kopano_rule(server=server, user=options.user, listrules=options.listrules, rules=options.rule,
                     state=options.state, emptyRules=options.emptyRules, rulename=options.createrule,
                     conditions=options.conditions, actions=options.actions, exceptions=options.exceptions,
                     StopProcessingRules=options.StopProcessingRules, CreateFolder=options.CreateFolder)
+
+def run_rules(api_url, user_store, username=None, password=None, rules=None, ignore_states=None, folders=None):
+    user = server.user(user_store)
+    payload = dict(userid=user.userid)
+    if username:
+        payload.update({'username': username})
+    if password:
+        payload.update({'password': password})
+    if rules:
+        payload.update({'rules': rules})
+    if ignore_states:
+        payload.update({'ignore_states': ignore_states})
+    if len(folders) > 0:
+        # Only one folder is supported at the moment TODO fix this on the server side
+        folder = user.store.folder(folders[0])
+        payload.update({'folder_entryid': folder.entryid})
+
+    r = requests.post('{}/rules'.format(api_url), data=json.dumps(payload))
+    if r.status_code == 200:
+        print('task id is {}'.format(r.json()['task_id']))
+    else:
+        print('error occur code: {}'.format(r.status_code))
+
+
+def get_rules_task(api_url, task_id):
+    r = requests.get('{}/rules/{}'.format(api_url, task_id))
+    if r.status_code != 200:
+        print('error occur code: {}'.format(r.status_code))
+
+    task = r.json()
+    if task['status'] == 'PROGRESS':
+        print('Status: {} \nTotal amount of folder to scan: {} \nFolders scanned: {} \nCurrent folder: {} '
+              '\nTotal items in folder: {} \nItem scanned in folder: {}\nTotal amount rules that are executed: {}'
+               .format(task['status'], task['result']['total_folders'], task['result']['folders_done'],
+                       task['result']['current_folder'], task['result']['total'], task['result']['done'],
+                       task['result']['rules_executed']))
+    elif task['status'] == "SUCCESS":
+        print('Status: {} \nItems checked: {} \nTotal amount rules that are executed: {}'
+              .format(task['status'], task['result']['items_checked'], task['result']['rules_executed']))
+    else:
+        print(json.dumps(task, indent=4))
+
 
 def main():
     global server
@@ -1219,12 +1260,18 @@ def main():
         if not os.path.isfile(options.configFile):
             print('Config file not found')
             sys.exit(1)
-        import importlib
+
 
         LDAP = importlib.import_module(options.configFile.split('.')[0], package=None)
         if 'ldap3' not in sys.modules:
             print('please install ldap3 (pip3 install ldap3)')
             sys.exit(1)
+
+    if options.rule:
+        if isinstance(options.rule, int):
+            options.rule = [options.rule]
+        else:
+            options.rule = list(map(int, options.rule.split(',')))
 
     if not options.user and not options.importFile:
         print('please use: {} --user <username> or \n{} --import-exchange-rules <json file>'.format(sys.argv[0],sys.argv[0]))
@@ -1232,13 +1279,34 @@ def main():
 
     server = kopano.Server(options)
     if options.user:
-        kopano_rule(server=server, user=options.user, listrules=options.listrules, rule=options.rule,
+        kopano_rule(server=server, user=options.user, listrules=options.listrules, rules=options.rule,
                     state=options.state, emptyRules=options.emptyRules, rulename=options.createrule,
                     conditions=options.conditions, actions=options.actions, exceptions=options.exceptions,
                     StopProcessingRules=options.StopProcessingRules, CreateFolder=options.CreateFolder)
 
     if options.importFile:
         exchange_rules()
+
+    if options.run_rules or options.rules_task:
+        if options.api_config:
+            rr_config = importlib.import_module(options.api_config.split('.')[0], package=None)
+            if hasattr(rr_config, 'API_URL'):
+                options.api_url = rr_config.API_URL
+            if hasattr(rr_config, 'USERNAME'):
+                options.username = rr_config.USERNAME
+            if hasattr(rr_config, 'PASSWORD'):
+                options.password = rr_config.PASSWORD
+        if options.ask_password:
+            options.password = getpass.getpass()
+
+        if options.run_rules:
+            run_rules(api_url=options.api_url, user_store=options.user, username=options.username,
+                      password=options.password, rules=options.rule, ignore_states=options.ignore_state,
+                      folders=options.folders)
+
+        if options.rules_task:
+            get_rules_task(api_url=options.api_url, task_id=options.rules_task)
+
 
 if __name__ == "__main__":
     main()

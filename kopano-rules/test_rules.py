@@ -15,6 +15,7 @@ class RulesTest(unittest.TestCase):
             {'name-in-cc': None},
             {'name-in-to': None},
             {'name-in-to-cc': None},
+            {'name-in-bcc': None},
             {'sent-to': 'user2@farmer.lan'},
             {'importance': 'high'},
             {'sensitivity': 'private'},
@@ -156,7 +157,7 @@ class RulesTest(unittest.TestCase):
         self.assertEqual(cm.exception.code, 0)
 
         with self.assertRaises(SystemExit) as cm:
-            kopano_rules.kopano_rule(self.server, 'user1', rule=1, state='disable')
+            kopano_rules.kopano_rule(self.server, 'user1', rules=[1], state='disable')
         self.assertEqual(cm.exception.code, 0)
 
     def test_delete_rule(self):
@@ -185,7 +186,9 @@ class RulesTest(unittest.TestCase):
         self.assertEqual(cm.exception.code, 0)
 
         with self.assertRaises(SystemExit) as cm:
-            kopano_rules.kopano_rule(self.server, 'user1', rule=1, state='delete')
+            kopano_rules.kopano_rule(self.server, 'user1', rules=[1], state='delete')
         self.assertEqual(cm.exception.code, 0)
+
+
 if __name__ == '__main__':
     unittest.main()

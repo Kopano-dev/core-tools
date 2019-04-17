@@ -64,7 +64,7 @@ Example ldap config file
 * received-from *
 * name-in-cc
 * name-in-to
-* name-in-bbc
+* name-in-bcc
 * name-in-to-cc
 * sent-to *
 * importance (Low, Normal or High)
