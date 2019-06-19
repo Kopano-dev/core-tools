@@ -367,6 +367,10 @@ def convertcondition(conditions): ## TODO make this nicer
         conditions = [conditions]
     elif isinstance(conditions,SBitMaskRestriction):
         conditions = [conditions]
+    elif isinstance(conditions,SOrRestriction):
+            conditions = [conditions]
+    elif isinstance(conditions,SExistRestriction):
+        conditions = [conditions]   
 
     for condition in conditions:
         connum = 0
@@ -413,22 +417,18 @@ def convertcondition(conditions): ## TODO make this nicer
                             condition_message += "Includes these word(s) in the recipient address:"
 
 
-
-                    if proptag != '0x1a001f':
-                        try:
-                            if isinstance(condition.lpProp.Value, bytes):
-                                words = condition.lpProp.Value.decode('utf-8')
+            if proptag != '0x1a001f':
+                try:
+                    words = []
+                    for word in condition.lpRes:
+                        if not isinstance(word.lpProp, list):
+                            if isinstance(word.lpProp.Value, bytes):
+                                words.append(word.lpProp.Value.decode('utf-8'))
                             else:
-                                words = condition.lpProp.Value
-                            condition_message += u"{} \n".format(words)
-                        except AttributeError as e:
-                            print(e, condition)
-
-                numaddress += 1
-                if numaddress != totaladdresses and totaladdresses != 1:
-                    condition_message += ", "
-                if numaddress == totaladdresses and totaladdresses != 1:
-                    condition_message += "\n"
+                                words.append(word.lpProp.Value)
+                    condition_message += u"{} \n".format(', '.join(words))
+                except AttributeError as e:
+                    print(e, condition)
 
         # single.
         if isinstance(condition, SContentRestriction):
@@ -456,7 +456,6 @@ def convertcondition(conditions): ## TODO make this nicer
                 else:
                     words = condition.lpProp.Value
                 condition_message += u"{} \n".format(words)
-
 
 
         if isinstance(condition, SPropertyRestriction):
