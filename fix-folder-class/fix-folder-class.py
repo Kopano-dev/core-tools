@@ -1,19 +1,16 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
 
 
-try:
-    import kopano
-except ImportError:
-    import zarafa as kopano
+import kopano
 import itertools
 import json
 import os
 import sys
 
 def opt_args():
-    parser = kopano.parser('skpcuf')
+    parser = kopano.parser('skpcufUP')
     parser.add_option("--public", dest="public", action="store_true",
                       help="Run script for public folder")
     parser.add_option("--list", dest="list", action="store_true",
@@ -35,22 +32,22 @@ def fix_folders(store, user, options):
         username = user.name
     if options.restore:
 
-        if os.path.isfile('%s.json' % username):
-            with open('%s.json' % username) as json_data:
+        if os.path.isfile('{}.json'.format(username)):
+            with open('{}.json'.format(username), 'rb') as json_data:
                 data = json.load(json_data)
                 for restorefolder in data:
                     if restorefolder['folder-type']:
                         folder = user.store.folder(entryid=restorefolder['entryid'])
                         folder.container_class = 'IPF.%s' % restorefolder['folder-type']
                         try:
-                            print 'Changed %s folder-type to IPF.%s ' % (
-                                folder.name.encode('utf-8'), restorefolder['folder-type'])
-                        except Exception as e:
-                            print 'Changed %s folder-type to IPF.%s ' % (
-                                folder.name, restorefolder['folder-type'])
+                            print('Changed {} folder-type to IPF.{} '.format(
+                                folder.name.encode('utf-8'), restorefolder['folder-type']))
+                        except Exception:
+                            print('Changed {} folder-type to IPF.{} '.format(
+                                folder.name, restorefolder['folder-type']))
 
     for folder in store.folders():
-        if not folder.container_class:
+        if not folder.container_class or folder.container_class == 'IPF.Imap':
             if options.list:
                 storefolders.append({'name': folder.name, 'entryid': folder.entryid, 'folder-type': ''})
 
@@ -64,8 +61,10 @@ def fix_folders(store, user, options):
                         messageclass.update({item.message_class: 1})
                     else:
                         messageclass[item.message_class] += 1
+                    
                 if len(messageclass) == 0:
-                    storefolders.append({'name': folder.name, 'entryid': folder.entryid, 'folder-type': ''})
+                    storefolders.append({'name': folder.name, 'entryid': folder.entryid, 'folder-type': ''})                
+                # If messageclass has more then 1 entry we just assume that this is a mail folder.
                 elif len(messageclass) > 1:
                     folder.container_class = 'IPF.Note'
                 else:
@@ -73,21 +72,19 @@ def fix_folders(store, user, options):
 
     if options.list or len(storefolders) > 0:
         if len(storefolders) > 0:
-            with open('%s.json' % username, 'w') as outfile:
+            with open('{}.json'.format(username), 'w') as outfile:
                 json.dump(storefolders, outfile, indent=4)
-            print '%s.json created' % username
+            print('{}.json created'.format(username))
             if options.list:
-                print 'Following folders are broken:'
+                print('Following folders are broken:')
             else:
-                print 'Can\'t fix the following folders,  please fix them manually:'
-            print '{:50} {:5}'.format('Folder name', 'Entryid')
+                print('Can\'t fix the following folders,  please fix them manually:')
+            print('{:50} {:5}'.format('Folder name', 'Entryid'))
             for folder in storefolders:
-                try:
-                    print '{:50} {:5}'.format(folder['name'].encode('utf8'), folder['entryid'])
-                except UnicodeEncodeError:
-                    print '{:50} {:5}'.format(folder['name'], folder['entryid'])
+                print('{:50} {:5}'.format(folder['name'], folder['entryid']))
+
         else:
-            print 'No broken folders found'
+            print('No broken folders found')
 
 def main():
     options, args = opt_args()
@@ -95,7 +92,7 @@ def main():
     if options.public:
         store = server.public_store
         if not store:
-            print 'No public store found'
+            print('No public store found')
             sys.exit(1)
         user = 'Public'
         fix_folders(store, user, options)
@@ -105,7 +102,7 @@ def main():
         store = user.store
         if not store:
             continue
-        print user.name
+        print(user.name)
         fix_folders(store, user, options)
 
 if __name__ == "__main__":
