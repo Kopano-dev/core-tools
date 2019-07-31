@@ -173,6 +173,9 @@ class KopanoRules():
                                                                                     SPropValue(0x0E04001F, u';'))),
                                                 SPropertyRestriction(4, 0xe03001f, SPropValue(0x0E03001F, u''))])
 
+    def is_received(self):
+        return SExistRestriction(0x1a001e)
+
     def contain_word_sender_address(self):
         return_list = []
         for word in self.conditions:
@@ -1110,6 +1113,9 @@ def exchange_rules():
             },
             "HasAttachment": {
                 "kopano_name": "has-attachment",
+            },
+            "IsReceived": {
+                "kopano_name": "is-received",
             },
         },
         "actions": {
