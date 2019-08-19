@@ -17,8 +17,10 @@ def main():
         try:
             item = user.item(options.item_id)
             print('Found item {} in folder {}'.format(item.subject, item.folder.path))
+            f = open(options.item_id, 'wb')
+            f.write(item.eml())
             sys.exit(0)
-        except (kopano.errors.ArgumentError, kopano.errors.NotFoundError):
+        except Exception:
             print('ID is not an entryid searching for sourcekey, this can take a while')
         for folder in user.store.folders():
             for item in folder.items():
@@ -26,6 +28,8 @@ def main():
                 item_id = options.item_id.encode('utf-8').lower()
                 if sourcekey == item_id:
                     print('Found item {} in folder {}'.format(item.subject, item.folder.path))
+                    f = open(options.item_id, 'wb')
+                    f.write(item.eml())
                     sys.exit(0)
 
     print('Item ID not found')
