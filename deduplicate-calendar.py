@@ -21,10 +21,14 @@ def main():
     num = 0
     for item in folder.items():
         md5 = hashlib.md5(item.prop(PR_SUBJECT).value)
-        md5.update(item.prop(PR_START_DATE).value.strftime(("%m/%d/%Y, %H:%M:%S")))
-        md5.update(item.prop(PR_START_DATE).value.strftime(("%m/%d/%Y, %H:%M:%S")))
-        md5.update(item.prop(PR_BODY).value)
-        md5.update(item.prop(PR_HTML).value)
+        if item.get_prop(PR_START_DATE):
+            md5.update(item.prop(PR_START_DATE).value.strftime(("%m/%d/%Y, %H:%M:%S")).encode())
+        if item.get_prop(PR_END_DATE):
+            md5.update(item.prop(PR_END_DATE).value.strftime(("%m/%d/%Y, %H:%M:%S")).encode())
+        if item.get_prop(PR_BODY):    
+            md5.update(item.prop(PR_BODY).value)
+        if item.get_prop(PR_HTML):    
+            md5.update(item.prop(PR_HTML).value)
         md5 = md5.hexdigest()
         if md5 in read_items: 
             num += 1
@@ -32,6 +36,7 @@ def main():
         else:
             read_items.append(md5)
 
-    print('deleted {} item in folder {}'.format(num, folder.name))
+    print('deleted {} items in folder {}'.format(num, folder.name))
+
 if __name__ == '__main__':
     main()
