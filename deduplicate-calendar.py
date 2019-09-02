@@ -21,6 +21,8 @@ def main():
     read_items = []
     num = 0
     for item in folder.items():
+        if not item.get_prop(PR_SUBJECT):
+            continue
         if item.prop(PR_SUBJECT).value == options.subject.encode():
             md5 = hashlib.md5(item.prop(PR_SUBJECT).value)
             if item.get_prop(PR_START_DATE):
