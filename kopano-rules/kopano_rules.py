@@ -143,8 +143,8 @@ class KopanoRules():
         for user in self.conditions:
             self._get_email(user)
             user_list.append(SCommentRestriction(
-                        SPropertyRestriction(4, 0xc1d0102, SPropValue(0x00010102, self.mail.encode('utf-8'))),
-                        [SPropValue(0x60000003, 1), SPropValue(0x00010102, self.mail.encode('utf-8')),
+                        SPropertyRestriction(4, 0xc1d0102, SPropValue(0x00010102, '{}\x00'.format(self.mail).encode('utf-8'))),
+                        [SPropValue(0x60000003, 1), SPropValue(0x00010102, '{}\x00'.format(self.mail).encode('utf-8')),
                          SPropValue(0x0001001F, self.fromname), SPropValue(0x39000003, 0)]))
 
         return user_list
@@ -154,8 +154,8 @@ class KopanoRules():
         for user in self.conditions:
             self._get_email(user)
             user_list.append(SSubRestriction(0xe12000d, SCommentRestriction(
-                        SPropertyRestriction(4, 0x300b0102, SPropValue(0x00010102, self.mail.encode('utf-8'))),
-                        [SPropValue(0x60000003, 1), SPropValue(0x00010102, self.mail.encode('utf-8')),
+                        SPropertyRestriction(4, 0x300b0102, SPropValue(0x00010102, '{}\x00'.format(self.mail).encode('utf-8'))),
+                        [SPropValue(0x60000003, 1), SPropValue(0x00010102,'{}\x00'.format(self.mail).encode('utf-8')),
                          SPropValue(0x0001001F, self.fromname), SPropValue(0x39000003, 0)])))
         return user_list
 
