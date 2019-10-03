@@ -58,7 +58,7 @@ def opt_args():
     group.add_option("--api-url", dest="api_url", action="store", help="kopano-rulesd server url")
     group.add_option("--username", dest="username", action="store", help="username that will run the rules")
     group.add_option("--password", dest="password", action="store", help="password of the user that runs the rules")
-    group.add_option("--ask-password", dest="ask_password", action="store_true", 
+    group.add_option("--ask-password", dest="ask_password", action="store_true",
                      help="Ask password to run rules on a store")
     group.add_option("--api-config", dest="api_config", action="store",
                      help="Config file that contains api url, username and/or password")
@@ -320,7 +320,7 @@ class KopanoRules():
             self.user = self.server.user(self.user)
             complete_tree = self.conditions[0]
 
-        folderPath = unicode(complete_tree, "utf-8")
+        folderPath = complete_tree
         self.folder = self.user.store.folder(folderPath, create=self.CreateFolder)
 
 
@@ -373,7 +373,7 @@ def convertcondition(conditions): ## TODO make this nicer
     elif isinstance(conditions,SOrRestriction):
             conditions = [conditions]
     elif isinstance(conditions,SExistRestriction):
-        conditions = [conditions]   
+        conditions = [conditions]
 
     for condition in conditions:
         connum = 0
