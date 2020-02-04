@@ -22,7 +22,10 @@ def main():
             continue
         saved_sf = []
         if options.keep:
-            saved_sf = list(u.store.searches())
+            try:
+                saved_sf = list(u.store.searches())
+            except KeyError:
+                pass
         for sf in findroot.folders():
             if sf not in saved_sf:
                 if sf.created < datetime.datetime.now()-datetime.timedelta(days=options.days):
