@@ -26,6 +26,7 @@ def opt_args():
     parser.add_option("--days", dest="days", action="store", help="Delete older then x days")
     parser.add_option("--verbose", dest="verbose", action="store_true", help="Verbose mode")
     parser.add_option("--dry-run", dest="dryrun", action="store_true", help="Run script in dry mode")
+    parser.add_option("--empty", dest="empty", action="store_true", help="Empty the complete folder (only works with --wastebasket or --junk)")
     parser.add_option("--progressbar", dest="progressbar", action="store_true", help="Show progressbar ")
     return parser.parse_args()
 
@@ -98,8 +99,8 @@ def deleteitems(options, user, folder):
 
 def main():
     options, args = opt_args()
-    if not options.user or not options.days:
-        print('Please use:\n {} --user <username> --days <days> ',format(sys.argv[0]))
+    if (not options.user or (not options.days and not options.empty)):
+        print('Please use:\n {} --user <username> --days <days> '.format(sys.argv[0]))
         sys.exit(1)
 
 
@@ -109,11 +110,19 @@ def main():
 
     if options.wastebasket:
             folder = user.store.wastebasket
-            deleteitems(options, user, folder)
+            if options.empty:
+                print('deleting {} items'.format(folder.count))
+                folder.empty()
+            else:
+                deleteitems(options, user, folder)
 
     if options.junk:
             folder = user.store.junk
-            deleteitems(options, user, folder)
+            if options.empty:
+                print('deleting {} items'.format(folder.count))
+                folder.empty()
+            else:
+                deleteitems(options, user, folder)
 
     '''
     Loop over all the folders that are passed with the -f parameter
