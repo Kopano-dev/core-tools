@@ -16,6 +16,8 @@ Parameters
   --days=DAYS                        Delete older then x days
   --verbose                          Verbose mode
   --dry-run                          Run script in dry mode
+  --empty                            Empty the complete folder (only works
+                                     with --wastebasket or --junk)
   --progressbar                      Show progressbar
 
 ```
@@ -23,7 +25,7 @@ Parameters
 ## Usage
 delete
 ```python
-python cleanup.py --user username --junk --wastebasket --days days   
+python cleanup.py --user username --junk --wastebasket --days days
 ```
 
 archive
