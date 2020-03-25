@@ -13,6 +13,9 @@ Parameters
                                      into this folder
   --junk                             Run cleanup script for the junk folder
   --force                            Force items without date to be removed
+  --all                              Run over all folders
+  --recursive                        Run over the subfolders (Only works if -f
+                                     is being used)
   --days=DAYS                        Delete older then x days
   --verbose                          Verbose mode
   --dry-run                          Run script in dry mode
