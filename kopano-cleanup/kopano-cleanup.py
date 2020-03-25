@@ -23,11 +23,14 @@ def opt_args():
     parser.add_option("--archive", dest="archive", action="store", help="instead of removing items archive them into this folder")
     parser.add_option("--junk", dest="junk", action="store_true", help="Run cleanup script for the junk folder")
     parser.add_option("--force", dest="force", action="store_true", help="Force items without date to be removed")
+    parser.add_option("--all", dest="all", action="store_true", help="Run over all folders")
+    parser.add_option("--recursive ", dest="recursive", action="store_true", help="Run over the subfolders (Only works if -f is being used)")
     parser.add_option("--days", dest="days", action="store", help="Delete older then x days")
     parser.add_option("--verbose", dest="verbose", action="store_true", help="Verbose mode")
     parser.add_option("--dry-run", dest="dryrun", action="store_true", help="Run script in dry mode")
     parser.add_option("--empty", dest="empty", action="store_true", help="Empty the complete folder (only works with --wastebasket or --junk)")
     parser.add_option("--progressbar", dest="progressbar", action="store_true", help="Show progressbar ")
+
     return parser.parse_args()
 
 
@@ -91,10 +94,9 @@ def deleteitems(options, user, folder):
                                                                                              _encode(folder.name),
                                                                                              _encode(archive_folder.name)))
     else:
-        print('Deleted {}  item(s) for user \'{}\' in folder \'{}\''.format(itemcount, _encode(user.name), _encode(folder.name)))
+        print('Deleted {}  item(s) for user \'{}\' in folder \'{}\''.format(itemcount, _encode(user.name), _encode(folder.path)))
 
     return itemcount
-
 
 
 def main():
@@ -127,9 +129,22 @@ def main():
     '''
     Loop over all the folders that are passed with the -f parameter
     '''
+
     if options.folders:
-        for folder in user.store.folders(options.folders):
+        folders = []
+        tmp  = list(user.store.folders(options))
+        folders =  tmp
+        ## combine all subfolders
+        if options.recursive:
+            for f in tmp:
+                folders =  folders + list(f.folders())
+
+        for folder in folders:
             deleteitems(options, user, folder)
 
+    elif options.all:
+        for folder in user.store.folders():
+            deleteitems(options, user, folder)
+                
 if __name__ == "__main__":
     main()
