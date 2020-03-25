@@ -144,7 +144,9 @@ def main():
 
     elif options.all:
         for folder in user.store.folders():
-            deleteitems(options, user, folder)
+            # Only delete items in a mail folder
+            if not folder.container_class or folder.container_class == 'IPF.Note':
+                deleteitems(options, user, folder)
                 
 if __name__ == "__main__":
     main()
