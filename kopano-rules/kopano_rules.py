@@ -309,9 +309,11 @@ class KopanoRules():
             return ACTION(7, 4, None, None, 0x0, actFwdDelegate(user_list))
 
     def _get_folder(self):
-
         try:
-            self.user = self.server.user(self.conditions[1])
+            if self.conditions[1].lower() == 'public':
+                self.user =  self.server.public_store
+            else:    
+                self.user = self.server.user(self.conditions[1])
             complete_tree = self.conditions[0]
         except kopano.NotFoundError:
             self.user = self.server.user(self.user)
@@ -319,19 +321,24 @@ class KopanoRules():
         except IndexError:
             self.user = self.server.user(self.user)
             complete_tree = self.conditions[0]
-
+        
         folderPath = complete_tree
-        self.folder = self.user.store.folder(folderPath, create=self.CreateFolder)
-
+        if self.user.public:
+            self.entryid = self.user.entryid
+            self.folder = self.user.folder(folderPath, create=self.CreateFolder)
+        else:
+            self.entryid = self.user.store.entryid
+            self.folder = self.user.store.folder(folderPath, create=self.CreateFolder)
 
     def move_to(self):
         self._get_folder()
-        return ACTION(1, 0, None, None, 0x0, actMoveCopy(binascii.unhexlify(self.user.store.entryid),
+        print(self.user, self.folder)
+        return ACTION(1, 0, None, None, 0x0, actMoveCopy(binascii.unhexlify(self.entryid),
                                                          binascii.unhexlify(self.folder.entryid)))
 
     def copy_to(self):
         self._get_folder()
-        return ACTION(2, 0, None, None, 0x0, actMoveCopy(binascii.unhexlify(self.user.store.entryid),
+        return ACTION(2, 0, None, None, 0x0, actMoveCopy(binascii.unhexlify(self.entryid),
                                                          binascii.unhexlify(self.folder.entryid)))
     def delete(self):
         user_store = self.server.user(self.user).store
@@ -666,7 +673,7 @@ def convertcondition(conditions): ## TODO make this nicer
     return condition_message
 
 
-def convertaction(action, user,server):
+def convertaction(action, user, server):
 
     action_message = ''
     movetype = {1: 'Move',
@@ -690,33 +697,30 @@ def convertaction(action, user,server):
         if isinstance(act.actobj, actMoveCopy):
             folderid = binascii.hexlify(act.actobj.FldEntryId)
             storeid = act.actobj.StoreEntryId
+            
+            store = server.store(entryid=binascii.hexlify(storeid)) 
+            name = ""
+            if store.public:
+                name = "(Public Store)"
+            else:
+                if store.name != user.name: 
+                    name = "({})".format(store.name)
             try:
                 try:
-                    foldername = user.store.folder(entryid=folderid).name
+                    foldername = store.folder(entryid=folderid).name
                 except TypeError:
-                    foldername = user.store.folder(folderid).name
+                    foldername = store.folder(folderid).name
             except kopano.NotFoundError:
-                try:
-                    mapistore = server.mapisession.OpenMsgStore(0, storeid, IID_IMsgStore, MDB_WRITE)
-                    newstore = kopano.Store(mapiobj=mapistore, server=server)
+                foldername = 'unknown'
 
-                    try:
-                        foldername = '%s (%s)' % (newstore.folder(entryid=folderid).name, newstore.user.name)
-                    except TypeError:
-                        foldername = '%s (%s)' % (newstore.folder(folderid).name, newstore.user.name)
-                except AttributeError:
-                    foldername = 'Folder not available'
-                except MAPI.Struct.MAPIErrorNotFound:
-                    foldername = 'unknown'
-
-
+            
             if act.acttype == 1:
                 if folderid == binascii.hexlify(user.store.prop(PR_IPM_WASTEBASKET_ENTRYID).value):
                     action_message += 'Delete message'
                 else:
-                    action_message += "%s message to folder '%s'" % (movetype[act.acttype], foldername)
+                    action_message += "{} message to folder '{}' {}".format(movetype[act.acttype], foldername, name)
             else:
-                action_message += "%s message to folder '%s'" % (movetype[act.acttype], foldername)
+                action_message += "{} message to folder '{}' {}".format(movetype[act.acttype], foldername, name)
 
         if isinstance(act.actobj, actFwdDelegate):
             sendstype = {0: 'Forward message to ',

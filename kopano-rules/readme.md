@@ -14,26 +14,26 @@ kopano-rules supports:
 
 ## Dependencies
 
-kopano-rules depends on a few Python libraries:
+kopano-rules depends on a few Python3 libraries:
 
 * [python3-kopano](https://download.kopano.io/supported/core:/final/)
 * [tabulate](https://pypi.org/project/tabulate/)
-* [binascii](https://docs.python.org/3/library/binascii.html)
+* [binascii](https://docs.python3.org/3/library/binascii.html)
 
 
 ## Usage
 
 #### list rules
 
-    python kopano-rules --user <username> --list
+    python3 kopano-rules --user <username> --list
 
 #### enable, disable or delete rule
-    python kopano-rules.py --user <username> --rule <number> --state enable
-    python kopano-rules.py --user <username> --rule <number> --state disable
-    python kopano-rules.py --user <username> --rule <number> --state delete
+    python3 kopano_rules.py --user <username> --rule <number> --state enable
+    python3 kopano_rules.py --user <username> --rule <number> --state disable
+    python3 kopano_rules.py --user <username> --rule <number> --state delete
 
 #### create rule
-    python kopano-rules.py --user <username> --create <rulename> --conditions "<conditions>" --actions "<actions>" --exceptions "<exceptions>"
+    python3 kopano_rules.py --user <username> --create <rulename> --conditions "<conditions>" --actions "<actions>" --exceptions "<exceptions>"
 
 Conditions, actions and exceptions layout is "message:variables"
 
@@ -44,11 +44,11 @@ This is tested with the following exchange command
     
 To import
 
-    python kopano-rules.py --import /path/to/json-file
+    python3 kopano_rules.py --import /path/to/json-file
 
 To enable ldap searches for converting the legacyExchangeDN use the ldap-config option
     
-    python kopano-rules.py --import /path/to/json-file --ldap-config config.py
+    python3 kopano_rules.py --import /path/to/json-file --ldap-config config.py
 
 Example ldap config file 
     
@@ -96,25 +96,25 @@ Example ldap config file
 
 \*\* when using multiple words use , to seperate them (hello,world,how are you)
 
-\*\*\* foldername,username. When using a subfolder(mainfolder/subfolder), username is only nessecary when you want to copy/move the message to an other user.
+\*\*\* foldername,username. When using a subfolder(mainfolder/subfolder), username is only nessecary when you want to copy/move the message to an other user. If you want to copy/move to a public folder use the username 'public'
 
 
 ### Example's
 
 ##### Create rule with one condition
-     python kopano-rules.py --user user1 --create firstrule --conditions "received-from:user3@kopano.com" --actions "forward-to:user2@kopano.com"
+     python3 kopano_rules.py --user user1 --create firstrule --conditions "received-from:user3@kopano.com" --actions "forward-to:user2@kopano.com"
 
 ##### Create rule with multiple conditions
-     python kopano-rules.py --user user1 --create firstrule --conditions "received-from:user3@kopano.com" --conditions "importance:low" --actions "forward-to:user2@kopano.com"
+     python3 kopano_rules.py --user user1 --create firstrule --conditions "received-from:user3@kopano.com" --conditions "importance:low" --actions "forward-to:user2@kopano.com"
 
 #### Create rule with multiple actions
-    python kopano-rules.py --user user1 --create firstrule --conditions "received-from:user3@kopano.com" --actions "forward-to:user2@kopano.com" --actions "copy-to:Inbox/kopano,user2"
+    python3 kopano_rules.py --user user1 --create firstrule --conditions "received-from:user3@kopano.com" --actions "forward-to:user2@kopano.com" --actions "copy-to:Inbox/kopano,user2"
 
 #### Create rule with multiple actions conditions and  exceptions
-    python kopano-rules.py --user user1 --create firstrule --conditions "received-from:user3@kopano.com" --conditions "has-attachment" --exceptions "received-date:01-01-2015,01-01-2017" --exceptions" sensitivity:personal" --actions "forward-to:user2@kopano.com" --actions "copy-to:Inbox/kopano,user2"
+    python3 kopano_rules.py --user user1 --create firstrule --conditions "received-from:user3@kopano.com" --conditions "has-attachment" --exceptions "received-date:01-01-2015,01-01-2017" --exceptions" sensitivity:personal" --actions "forward-to:user2@kopano.com" --actions "copy-to:Inbox/kopano,user2"
 
 #### Create rule and stop processing further rules on the message 
-    python kopano-rules.py --user user1 --create firstrule --conditions "received-from:user3@kopano.com" --actions "forward-to:user2@kopano.com" --stop-processing
+    python3 kopano_rules.py --user user1 --create firstrule --conditions "received-from:user3@kopano.com" --actions "forward-to:user2@kopano.com" --stop-processing
 
 ### Known issue's
 * message-size and name-in-to are not working at the moment
