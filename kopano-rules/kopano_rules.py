@@ -179,16 +179,20 @@ class KopanoRules():
     def contain_word_sender_address(self):
         return_list = []
         for word in self.conditions:
-                return_list.append(SContentRestriction(1, 0xc1d0102, SPropValue(0x0C1D0102, word.encode())))
+            return_list.append(SContentRestriction(1, 0xc1d0102, SPropValue(0x0C1D0102, word.encode())))
 
         return return_list
 
     def contain_word_recipient_address(self):
         return_list = []
         for word in self.conditions:
-            return_list.append(SContentRestriction(1, 0x300b0102,SPropValue(0x300B0102, word.upper().encode())))
+            if len(self.conditions) > 1:
+                return_list.append(SSubRestriction(0x0E12000D,SContentRestriction(65537, 0x39fe001f,SPropValue(0x39FE001F, word))))
+            else:
+                return_list.append(SContentRestriction(65537, 0x39fe001f,SPropValue(0x39FE001F, word)))
+
         if len(return_list) > 1:
-            return SSubRestriction(0x0E12000D, SOrRestriction(return_list))
+            return SOrRestriction(return_list)
         else:
             return SSubRestriction(0x0E12000D, return_list[0])
 
@@ -332,7 +336,6 @@ class KopanoRules():
 
     def move_to(self):
         self._get_folder()
-        print(self.user, self.folder)
         return ACTION(1, 0, None, None, 0x0, actMoveCopy(binascii.unhexlify(self.entryid),
                                                          binascii.unhexlify(self.folder.entryid)))
 
@@ -383,6 +386,7 @@ def convertcondition(conditions): ## TODO make this nicer
         conditions = [conditions]
 
     for condition in conditions:
+        
         connum = 0
 
         # SExistRestriction
@@ -408,6 +412,14 @@ def convertcondition(conditions): ## TODO make this nicer
                     user = addresses.lpRes.lpProp.Value.replace(b'ZARAFA:', b'').lower()
                     condition_message += "{} \n".format(user.decode('utf-8'))
 
+                
+
+                if isinstance(addresses, SSubRestriction):
+                    proptag = hex(addresses.lpRes.ulPropTag)
+                    if proptag not in conlist:
+                        conlist.append(proptag)
+                        if proptag == '0x39fe001f':
+                            condition_message += "Includes these word(s) in the recipient address:"
 
                 if isinstance(addresses, SContentRestriction):
                     proptag = hex(addresses.ulPropTag)
@@ -423,15 +435,19 @@ def convertcondition(conditions): ## TODO make this nicer
                             condition_message += "Includes these word(s) in the header: "
                         if proptag == '0x1a001f':
                             condition_message += "Which is a meeting invitation or update"
-                        if proptag == '0x300B0102':
+                        if proptag == '0x39fe001f':
                             condition_message += "Includes these word(s) in the recipient address:"
-
 
             if proptag != '0x1a001f':
                 try:
                     words = []
                     for word in condition.lpRes:
-                        if not isinstance(word.lpProp, list):
+                        if isinstance(word, SSubRestriction):
+                            if isinstance(word.lpRes.lpProp.Value, bytes):
+                                words.append(word.lpRes.lpProp.Value.decode('utf-8'))
+                            else:
+                                words.append(word.lpRes.lpProp.Value)
+                        elif not isinstance(word.lpProp, list):
                             if isinstance(word.lpProp.Value, bytes):
                                 words.append(word.lpProp.Value.decode('utf-8'))
                             else:
@@ -442,7 +458,6 @@ def convertcondition(conditions): ## TODO make this nicer
 
         # single.
         if isinstance(condition, SContentRestriction):
-
             if not SContentRestriction in conlist:
                 conlist.append(SContentRestriction)
                 proptag = hex(condition.ulPropTag).lower()
@@ -456,7 +471,7 @@ def convertcondition(conditions): ## TODO make this nicer
                     condition_message += "Includes these word(s) in the header: "
                 if proptag == '0x1a001f':
                     condition_message += "Which is a meeting invitation or update"
-                if proptag == '0x300B0102':
+                if proptag == '0x39fe001f':
                     condition_message += "Includes these word(s) in the recipient address:"
 
 
@@ -1010,7 +1025,7 @@ def kopano_rule(server, user, listrules=False, rules=None, state=None, emptyRule
         if rowlist:
 
             rule_table.ModifyTable(0, rowlist)
-            print(u"Rule '{}' created ".format(rulename).encode('utf-8'))
+            print("Rule '{}' created ".format(rulename))
             sys.exit(0)
 
 
