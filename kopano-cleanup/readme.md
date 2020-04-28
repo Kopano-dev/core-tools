@@ -5,8 +5,17 @@ The following scripts allow you to automatically delete or archive all items old
 
 Parameters
 ```python
+  -h, --help                         show this help message and exit
+  -c FILE, --config=FILE             load settings from FILE
+  -s SOCKET, --server-socket=SOCKET  connect to server SOCKET
+  -k FILE, --ssl-key=FILE            SSL key file
+  -p PASS, --ssl-pass=PASS           SSL key password
+  -U NAME, --auth-user=NAME          login as user
+  -P PASS, --auth-pass=PASS          login with password
   -f NAME, --folder=NAME             Specify folder
+  -m, --modify                       enable database modification
   --user=USER                        Run script for user
+  --public                           Run script for Public store
   --wastebasket                      Run cleanup script for the wastebasket
                                      folder
   --archive=ARCHIVE                  instead of removing items archive them
@@ -22,7 +31,6 @@ Parameters
   --empty                            Empty the complete folder (only works
                                      with --wastebasket or --junk)
   --progressbar                      Show progressbar
-
 ```
 
 ## Usage

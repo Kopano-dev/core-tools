@@ -18,6 +18,7 @@ else: # pragma: no cover
 def opt_args():
     parser = kopano.parser('skpcfmUP')
     parser.add_option("--user", dest="user", action="store", help="Run script for user")
+    parser.add_option("--public", dest="public", action="store_true", help="Run script for Public store")
     parser.add_option("--wastebasket", dest="wastebasket", action="store_true",
                       help="Run cleanup script for the wastebasket folder")
     parser.add_option("--archive", dest="archive", action="store", help="instead of removing items archive them into this folder")
@@ -89,26 +90,36 @@ def deleteitems(options, user, folder):
 
     if options.progressbar:
         pbar.finish()
+    if options.public:
+        username = "Public store"
+    else:
+        username =  user.name
     if options.archive:
-        print('Archived {} item(s) for user \'{}\' in folder \'{}\' to folder \'{}\''.format(itemcount, _encode(user.name),
+        print('Archived {} item(s) for user \'{}\' in folder \'{}\' to folder \'{}\''.format(itemcount, _encode(username),
                                                                                              _encode(folder.name),
                                                                                              _encode(archive_folder.name)))
     else:
-        print('Deleted {}  item(s) for user \'{}\' in folder \'{}\''.format(itemcount, _encode(user.name), _encode(folder.path)))
+        print('Deleted {}  item(s) for user \'{}\' in folder \'{}\''.format(itemcount, _encode(username), _encode(folder.path)))
 
     return itemcount
 
 
 def main():
     options, args = opt_args()
-    if (not options.user or (not options.days and not options.empty)):
+    if (not options.user and not options.public) or (not options.days and not options.empty):
         print('Please use:\n {} --user <username> --days <days> '.format(sys.argv[0]))
         sys.exit(1)
 
-
-
-    user = kopano.Server(options).user(options.user)
-    print('Running script for \'{}\''.format(_encode(user.name)))
+    server = kopano.Server(options)
+    if options.public:
+        if not options.folders and not options.all:
+            print('public folder options only works with the options -f or --all')
+        user = server.public_store
+        username = "Public store"
+    else: 
+        user = server.user(options.user)
+        username = user.name
+    print('Running script for \'{}\''.format(_encode(username)))
 
     if options.wastebasket:
             folder = user.store.wastebasket
@@ -132,7 +143,11 @@ def main():
 
     if options.folders:
         folders = []
-        tmp  = list(user.store.folders(options))
+        if options.public:
+            store = user
+        else:
+            store = user.store
+        tmp  = list(store.folders(options))
         folders =  tmp
         ## combine all subfolders
         if options.recursive:
@@ -143,7 +158,11 @@ def main():
             deleteitems(options, user, folder)
 
     elif options.all:
-        for folder in user.store.folders():
+        if options.public:
+            store = user
+        else:
+            store = user.store
+        for folder in store.folders():
             # Only delete items in a mail folder
             if not folder.container_class or folder.container_class == 'IPF.Note':
                 deleteitems(options, user, folder)
