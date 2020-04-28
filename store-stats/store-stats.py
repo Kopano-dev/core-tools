@@ -16,6 +16,7 @@ def opt_args():
     parser = kopano.parser('skfpcmuUP')
     parser.add_option("--hidden", dest="hidden", action="store_true", help="Show hidden folders")
     parser.add_option("--public", dest="public", action="store_true", help="Run for public store")
+    parser.add_option("--summary", dest="summary", action="store_true", help="Show total store size")
     parser.add_option("--older-then", dest="timestamp", action="store", help="Hide items that are younger then (dd-mm-yyyy 00:00)")
     return parser.parse_args()
 
@@ -26,10 +27,11 @@ def sizeof_fmt(num, suffix='B'):
         num /= 1024.0
     return "%.1f%s%s" % (num, 'Yi', suffix)
 
-def get_stats(options, folders,storename):
+def get_stats(options, folders, storename):
     table_header = ["Folder path", "Items in folder",  "Folder size"]
     table_data = []
     items = 0
+    store_size = 0
     total_folders = 0
     for folder in folders:
         if folder.path:
@@ -54,9 +56,15 @@ def get_stats(options, folders,storename):
 
         items += count
         total_folders += 1
+        store_size += folder.size
+
         table_data.append([name, count, '{} ({} bytes)'.format(sizeof_fmt(folder.size), size)])
-    print('{} folders and {} items in store of {}'.format(total_folders, items, storename))
-    print(tabulate(table_data, headers=table_header, tablefmt="grid"))
+
+    if options.summary:
+        print('{}: {} ({} bytes)' .format(storename, sizeof_fmt(store_size), store_size))
+    else:
+        print('{} folders and {} items in store of {}'.format(total_folders, items, storename))
+        print(tabulate(table_data, headers=table_header, tablefmt="grid"))
 
 def main():
     options, args = opt_args()
