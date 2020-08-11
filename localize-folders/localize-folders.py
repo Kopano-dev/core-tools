@@ -101,12 +101,19 @@ def main():
 
             localizedname = trans[mapifolder]
             if options.verbose or options.dryrun:
-                print(
-                    'Renaming MAPI Folder "{}" -> From "{}" To "{}"'.format(mapifolder, folderobject.name,
+                try:
+                    print(
+                        'Renaming MAPI Folder "{}" -> From "{}" To "{}"'.format(mapifolder, folderobject.name,
+                                                                                localizedname))
+                except UnicodeDecodeError:
+                    print(
+                        'Renaming MAPI Folder "{}" -> From "{}" To "{}"'.format(mapifolder, folderobject.name,
                                                                                 localizedname.decode('utf-8')))
             if not options.dryrun:
                 try:
                     folderobject.create_prop(PR_DISPLAY_NAME, localizedname.encode('utf-8'))
+                except UnicodeDecodeError:
+                     folderobject.create_prop(PR_DISPLAY_NAME, localizedname)
                 except Exception as e:
                     print(e)
                     sys.exit(1)
