@@ -25,6 +25,7 @@ Parameters
   --all                              Run over all folders
   --recursive                        Run over the subfolders (Only works if -f
                                      is being used)
+  --delivery-time                    Use PR_MESSAGE_DELIVERY_TIME as date filter
   --days=DAYS                        Delete older then x days
   --verbose                          Verbose mode
   --dry-run                          Run script in dry mode
@@ -36,12 +37,20 @@ Parameters
 ## Usage
 delete
 ```python
-python cleanup.py --user username --junk --wastebasket --days days
+python3 cleanup.py --user username --junk --wastebasket --days days
 ```
 
 archive
 ```python
-python cleanup.py --user username --junk --wastebasket --days days  --archive foldername
+python3 cleanup.py --user username --junk --wastebasket --days days  --archive foldername
 
 ```
 
+
+By default the script is using PR_LAST_MODIFICATION_TIME as the property for the date filtering
+If you restore a backup this date will be set the to date of the restore, if you still want to cleanup the store after that, you can use the `--delivery-time`
+Please be aware that this property is not set for all items (e.g. contact, draft items) and the PR_LAST_MODIFICATION_TIME is then used as fallback
+
+```python
+python3 cleanup.py --user username --junk --wastebasket --days days --delivery-time
+```

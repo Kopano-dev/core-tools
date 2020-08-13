@@ -26,6 +26,7 @@ def opt_args():
     parser.add_option("--force", dest="force", action="store_true", help="Force items without date to be removed")
     parser.add_option("--all", dest="all", action="store_true", help="Run over all folders")
     parser.add_option("--recursive ", dest="recursive", action="store_true", help="Run over the subfolders (Only works if -f is being used)")
+    parser.add_option("--delivery-time", dest="delivery_time", action="store_true", help="Use PR_MESSAGE_DELIVERY_TIME as date filter")
     parser.add_option("--days", dest="days", action="store", help="Delete older then x days")
     parser.add_option("--verbose", dest="verbose", action="store_true", help="Verbose mode")
     parser.add_option("--dry-run", dest="dryrun", action="store_true", help="Run script in dry mode")
@@ -58,6 +59,10 @@ def progressbar(folder, daysbeforedeleted):
 def deleteitems(options, user, folder):
     itemcount = 0
     daysbeforedeleted = datetime.datetime.now() - timedelta(days=int(options.days))
+    FILTER_PR = PR_LAST_MODIFICATION_TIME
+    if options.delivery_time:
+        FILTER_PR = PR_MESSAGE_DELIVERY_TIME 
+
     pbar = None
     if options.progressbar:
         pbar = progressbar(folder, daysbeforedeleted)
@@ -67,10 +72,15 @@ def deleteitems(options, user, folder):
 
     for item in folder.items():
         date = None
-        if not item.prop(PR_LAST_MODIFICATION_TIME).value and options.force:
+
+        prop = item.get_prop(FILTER_PR)
+        if not prop:
+            prop = item.get_prop(PR_LAST_MODIFICATION_TIME)
+    
+        if not prop.value and options.force:
             date = daysbeforedeleted
-        elif item.prop(PR_LAST_MODIFICATION_TIME).value:
-            date = item.prop(PR_LAST_MODIFICATION_TIME).value
+        elif prop.value:
+            date = prop.value
         if date:
             if date <= daysbeforedeleted:
                 if options.verbose:
