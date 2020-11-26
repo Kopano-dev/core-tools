@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
-from __future__ import print_function
-from __future__ import unicode_literals
 import kopano
 import sys
 
