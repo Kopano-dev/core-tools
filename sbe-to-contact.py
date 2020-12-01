@@ -23,7 +23,7 @@ def main():
         for f in user.folders(recurse=True):
             if f.container_class == 'IPF.Contact':
                 for item in f.items():
-                    if item.message_class == 'IPM.Contact:SBE':
+                    if item.message_class == 'IPM.Contact.SBE':
                         changed_items += 1
                         if options.verbose:
                             print('Fixing contact {}'.format(item.name))
