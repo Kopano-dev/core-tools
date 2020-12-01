@@ -16,7 +16,8 @@ def opt_args():
 
 def main():
     options = opt_args()
-    print("Running in read only mode use -m to modify the database")
+    if not options.modify:
+        print("Running in read only mode use -m to modify the database")
     for user in kopano.Server(options).users():
         changed_items= 0 
         for f in user.folders(recurse=True):
