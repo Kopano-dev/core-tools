@@ -99,6 +99,10 @@ def main():
                 print('Warning: Cannot find MAPI folder {}, error code: {}'.format(mapifolder, e))
                 continue
 
+            if not folderobject:
+                print('Warning: Cannot find MAPI folder {}'.format(mapifolder))
+                continue
+
             localizedname = trans[mapifolder]
             if options.verbose or options.dryrun:
                 try:
