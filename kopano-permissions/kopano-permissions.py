@@ -41,6 +41,7 @@ def opt_args():
     parser.add_option("--details", dest="printdetails", action="store_true", help="Print more details")
     parser.add_option("--calculate", dest="calc", action="store_true", help="Calculate persmissions")
     parser.add_option("--remove", dest="remove", action="store", help="Remove permissions for this user")
+    parser.add_option("--root-only", dest="only_store", action="store_true", help="Remove permissions of only the ROOT/Store folder")
     parser.add_option("--add", dest="add", action="store", help="Add permissions for this user")
     parser.add_option("--permission", dest="permission", action="store",
                       help="Set permissions [norights|readonly|secretary|owner|fullcontrol] or use the calculate "
@@ -48,6 +49,8 @@ def opt_args():
     parser.add_option("--delegate", dest="delegate", action="store_true", help="Add user as delegate")
     parser.add_option("--private", dest="private", action="store_true", help="Allow delegate to see private items")
     parser.add_option("--copy", dest="copy", action="store_true", help="Send copy of meeting request to delegate")
+
+
 
     return parser.parse_args()
 
@@ -391,8 +394,10 @@ def main():
     if options.remove:
         if not options.folders:
             removepermissions(user, options, user.store, 'Store')
-        for folder in user.store.folders(parse=True):
-            removepermissions(user, options, folder)
+            if options.only_store:
+                sys.exit(0)
+        for folder in userstore.folders(parse=True):
+           removepermissions(user, options, folder)
 
     if options.add:
         if options.folders:
