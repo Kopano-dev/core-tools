@@ -29,6 +29,7 @@ def main():
     options, args = opt_args()
     
     server = kopano.Server(options)
+    users = []
     if options.public:
         users = [server.public_store]
     
@@ -49,6 +50,7 @@ def main():
             # In the public store your are unable to directly search on the subtree so we collect all the top folders instead
             if options.public:
                 folders  = store.subtree.folders(recurse=False)
+                print('Doing a global search on the public store takes time, please be patient')
             else:
                 folders = [store.subtree]
         
@@ -70,13 +72,19 @@ def main():
                 date = "None"
 
             ## We use search folders and therefore we do not know the original folder, here we open the item again
+            folder_name = store.item(entryid=item.entryid).folder.path
+ 
+
             try:
-                uuid_obj = UUID(item.folder.name, version=4)
-                folder_name = store.item(entryid=item.entryid).folder.path
-            except ValueError:
-                folder_name = item.folder.path
-            try:
-                table_data.append([item.subject, folder_name, date, item.prop(PR_RECEIVED_BY_NAME_W).value, item.created, item.prop(PR_LAST_MODIFIER_NAME_W).value, item.prop(PR_LAST_MODIFICATION_TIME).value])
+               owner = item.prop(PR_SENDER_NAME_W).value
+            except NotFoundError as e:
+                try:
+                    owner = item.prop(PR_RECEIVED_BY_NAME_W).value
+                except NotFoundError as e:
+                    owner = 'Unkown'
+                
+            try :
+                table_data.append([item.subject, folder_name, date, owner, item.created, item.prop(PR_LAST_MODIFIER_NAME_W).value, item.prop(PR_LAST_MODIFICATION_TIME).value])
             except Exception as e:
                 errors += 1
                 if options.verbose:
@@ -84,7 +92,7 @@ def main():
         
         if errors > 0:
             if not options.verbose:
-                print('Unable to parse {} items. Run in verbose mode show more information'.format(errors))
+                print('Unable to parse {} items. Run in verbose mode to show more information'.format(errors))
                 
         print(tabulate(table_data, headers=table_header,tablefmt="grid"))
 
