@@ -58,8 +58,11 @@ def main():
         for folder in folders:
             if options.verbose:
                 print('searching in folder {}'.format(folder.name))
-            found_items =  found_items + list(folder.search(options.search, recurse=True))
-        
+            try:
+                found_items =  found_items + list(folder.search(options.search, recurse=True))
+            except UnicodeDecodeError:
+                found_items =  found_items + list(folder.search(options.search.decode('utf-8'), recurse=True))
+
         table_header = ["Subject", 'Folder', 'Time/Date', 'Owner', 'Created', 'Last modified', 'Last modified user']
         table_data = []
         errors = 0
