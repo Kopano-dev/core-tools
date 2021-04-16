@@ -4,7 +4,7 @@
 import kopano
 import json
 try:
-    from tabulate import tabulates
+    from tabulate import tabulate
 except ImportError:
     def tabulate(iterable, header, tablefmt=None):
         max_len = [len(x) for x in header]
