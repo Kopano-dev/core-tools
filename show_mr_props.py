@@ -33,7 +33,7 @@ def main():
     table_header = ["User", 'Enabled', 'decline conflict', 'decline recurring']
     table_data =[]
     for user in kopano.Server(options).users(parse=True):
-        table_data.append([user.name, user.autoaccept.enabled, user.autoaccept.recurring,user.autoaccept.conflicts])
+        table_data.append([user.name, user.autoaccept.enabled,user.autoaccept.conflicts, user.autoaccept.recurring ])
 
     print(tabulate(table_data, table_header, tablefmt="grid"))
 
