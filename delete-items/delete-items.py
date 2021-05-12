@@ -11,7 +11,7 @@ from kopano.errors import  NotFoundError
 def opt_args():
     parser = kopano.parser('skpfucmUP')
 
-    parser.add_option("--from", dest="from_date", action="store", help="Remove items from this date (YYYY-MM-DD)")
+    parser.add_option("--from", dest="from_date", action="store", help="Remove items starting from this date (YYYY-MM-DD)")
     parser.add_option("--until", dest="until_date", action="store", help="Remove item till this date (YYYY-MM-DD)")
     parser.add_option("--all", dest="all", action="store_true", help="Remove all items")
     parser.add_option("--subject", dest="subject", action="store", help="Subject of item")
