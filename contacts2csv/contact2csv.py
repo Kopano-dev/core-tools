@@ -38,7 +38,7 @@ extra = {"PR_DISPLAY_NAME_FULL": 0x8130001f,
          "PR_EMAIL3": 0X8154001F,
          "PR_MAIL3": 0X8153001F,
          "PR_DISPLAY_NAME_FULL3": 0X8150001F,
-         "PR_CATEGORIES": 0x850d101f,
+         "PR_CATEGORIES": 'public:Keywords',
          "PR_PRIVATE": 0x81a6000b
 }
 
@@ -162,7 +162,6 @@ def main():
                  getprop(contact, extra['PR_COUNTRY']), getprop(contact, extra['PR_IM']), getprop(contact, PR_BODY_W),
                  getprop(contact, PR_SENSITIVITY), getprop(contact, extra['PR_CATEGORIES']),
                  getprop(contact, extra['PR_PRIVATE'])])
-
             itemcount += 1
         resultFile = open("{}_contacts.csv".format(user), 'w')
         wr = csv.writer(resultFile, delimiter=delimiter)
@@ -219,16 +218,22 @@ def main():
                 show_contacts = [0]
                 for num in range(0, total, 1):
                     if contact[num]:
-
+                        proptype=None
                         if headers[num] == 'PR_WEDDING_ANNIVERSARY' or headers[num] == 'PR_BIRTHDAY':
                             datetime_date = datetime.fromtimestamp(int(contact[num][:-2]))
                             value = MAPI.Time.unixtime(time.mktime(datetime_date.timetuple()))
+
                         elif headers[num] == 'PR_SENSITIVITY':
                             value = int(contact[num])
+                        elif contact[num].startswith('[') and contact[num].endswith(']'):
+                            rem =  contact[num].replace('[', '').replace(']','').replace("'",'')
+                            value = [x.strip() for x in rem.split(',')]
+                            proptype=PT_MV_UNICODE
                         else:
                             value = contact[num].replace(u'\xa0', u' ')
+
                         if str(headers[num]) in extra:
-                            new_item.mapiobj.SetProps([SPropValue(extra[headers[num]], value)])
+                            new_item.create_prop(extra[headers[num]], value, proptype=proptype)
                         else:
                             if isinstance(value, str):
                                 value = value.encode('utf-8')
@@ -237,9 +242,12 @@ def main():
                         if headers[num] == "PR_EMAIL2":
                             show_contacts.append(1)
                             new_item.mapiobj.SetProps([SPropValue(extra['PR_DISPLAY_NAME_FULL2'], value)])
+
                         if headers[num] == "PR_EMAIL3":
                             show_contacts.append(2)
                             new_item.mapiobj.SetProps([SPropValue(extra['PR_DISPLAY_NAME_FULL3'], value)])
+
+
 
                 # Business address is formatted from 4 separated properties
                 # Check if they exist and craft the new property
