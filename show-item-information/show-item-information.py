@@ -20,11 +20,19 @@ except ImportError:
 def opt_args():
     parser = kopano.parser('skpcmUPufv')
     parser.add_option("--search", dest="search", action="store", help="string to search for ")
+    parser.add_option("--loop", dest="loop", action="store_true", help="Do not use the search engine")
     parser.add_option("--public", dest="public", action="store_true", help="search in public store")
 
     return parser.parse_args()
 
+def loop_over_items(folder, subject):
+    items = []
 
+    for item in folder.items():
+        if subject in item.subject:
+            items.append(item)
+
+    return items
 def main():
     options, args = opt_args()
     
@@ -58,10 +66,13 @@ def main():
         for folder in folders:
             if options.verbose:
                 print('searching in folder {}'.format(folder.name))
-            try:
-                found_items =  found_items + list(folder.search(options.search, recurse=True))
-            except UnicodeDecodeError:
-                found_items =  found_items + list(folder.search(options.search.decode('utf-8'), recurse=True))
+            if not options.loop:
+                try:
+                    found_items =  found_items + list(folder.search(options.search, recurse=True))
+                except UnicodeDecodeError:
+                    found_items =  found_items + list(folder.search(options.search.decode('utf-8'), recurse=True))
+            else:
+                found_items = found_items +  loop_over_items(folder, options.search)
 
         table_header = ["Subject", 'Folder', 'Time/Date', 'Owner', 'Created', 'Last modified', 'Last modified user']
         table_data = []
