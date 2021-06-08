@@ -20,6 +20,7 @@ Options:
   -m, --modify                       enable database modification
   -v, --verbose                      enable verbose output
   --search=SEARCH                    string to search for
+  --loop                             Do not use the search engine
   --public                           search in public store
 ```
 ## Dependencies
@@ -46,6 +47,12 @@ Search for an item on a specific folder for multiple users
 
 Search for an item in multiple folder for a user  
 > python3 show-item-information.py -u username  -f full/path/of/the/folder -f foldername2 --search "subject to search for" 
+
+
+Do not use the search engine, this is a lot slower but can help if the search engine is unable to find the item
+-f is mandatory
+>  python3 show-item-information.py -u username --search "text to search for " --loop -f Inbox
+
 
 ## Example output
 ```
