@@ -32,7 +32,7 @@ def main():
             continue
         print("Processing user: %s" % user.name)
         try:
-            entryidstore[user.name] = store.mapiobj.GetProps([PR_IPM_SUBTREE_ENTRYID], 0)[0].Value.encode("hex").upper()
+            entryidstore[user.name] = store.mapiobj.GetProps([PR_IPM_SUBTREE_ENTRYID], 0)[0].hex().upper()
         except:
             continue
 
@@ -48,7 +48,7 @@ def main():
             print("* Updating IPM_SUBTREE_ENTRYID to: '%s'" % ipmsubtree[user.name])
             if ipmsubtree[user.name]:
                 if not options.dryrun:
-                    store.mapiobj.SetProps([SPropValue(PR_IPM_SUBTREE_ENTRYID, ipmsubtree[user.name].decode("hex"))])
+                    store.mapiobj.SetProps([SPropValue(PR_IPM_SUBTREE_ENTRYID, bytes.fromhex(ipmsubtree[user.name]))])
             if ipmsubtree[user.name] and entryidstore[user.name] and options.move:
                 srcfld = store.folder(entryidstore[user.name])
                 dstfld = store.folder(ipmsubtree[user.name])
