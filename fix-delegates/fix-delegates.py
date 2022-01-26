@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import kopano
 import sys
@@ -61,10 +61,10 @@ def main():
     freebusy_start = freebusy_entryids[0]
     newid.extend([freebusy_start, freebusy_item_recordkey, '', freebusy_folder_recordkey])
     if options.verbose:
-        print 'Old ids are \n %s \n' % freebusy_entryids
-        print 'New ids are: \n %s' % newid
+        print('Old ids are \n %s \n' % freebusy_entryids)
+        print('New ids are: \n %s' % newid)
     if options.modify:
-        print 'The new ids are saved for user %s' % user.name
+        print('The new ids are saved for user %s' % user.name)
         user.store.root.prop(0x36E41102).set_value(newid)
 
 if __name__ == "__main__":
