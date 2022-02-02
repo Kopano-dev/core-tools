@@ -23,7 +23,7 @@ def main():
         print(folder.name)
         print('the following sub folders will be deleted:')
         for sub in folder.folders():
-            print sub.name
+            print(sub.name)
 
 if __name__ == '__main__':
     main()
