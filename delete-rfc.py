@@ -6,7 +6,7 @@
 import kopano
 from MAPI.Util import *
 import sys
-from kopano.errors import NotFoundError
+from kopano.errors import NotFoundError, MAPIErrorNotFound
 
 def opt_args():
     parser = kopano.parser('skpc')
