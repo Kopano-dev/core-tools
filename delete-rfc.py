@@ -5,8 +5,9 @@
 
 import kopano
 from MAPI.Util import PR_EC_IMAP_EMAIL
+from MAPI.Struct import MAPIErrorNotFound
 import sys
-from kopano.errors import NotFoundError, MAPIErrorNotFound
+from kopano.errors import NotFoundError
 
 def opt_args():
     parser = kopano.parser('skpc')
