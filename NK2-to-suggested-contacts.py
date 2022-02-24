@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
+
 import kopano
 from MAPI.Util import *
 import sys
@@ -50,7 +54,7 @@ class nk2addr:
             self.setName(unicode(r[0][1:], 'latin1'))
         except:
 
-            print "BONK!",repr(r[0])
+            print("BONK!",repr(r[0]))
             raise
         self._type = r[1]
 
@@ -102,14 +106,17 @@ class nk2addr:
         try:
             return u'"%(name)s" <%(address)s>' % {'name': self.name, 'address': self.address}  # vars(self)
         except:
-            print self.name
-            print vars(self)
+            print(self.name)
+            print(vars(self))
             raise
 
 
 def getnk2_list(options):
-
-    f = open(options.file, 'rb')
+    try:
+        f = open(options.file, 'rb')
+    except:
+        print('Please run:\n {} --file <path-to-file>'.format(sys.argv[0]))
+        sys.exit(1)
     filedata = f.read()
     f.close()
     NUL = '\x00'
@@ -175,7 +182,7 @@ def main():
     for contact in contactlist:
         try:
             if contact['email_address'] not in str(history['recipients']):
-                print contact
+                print(contact)
                 history['recipients'].append(contact)
         except kopano.NotFoundError:
             continue
