@@ -4,13 +4,17 @@
 
 
 import kopano
-from tabulate import tabulate
 from datetime import datetime
 
 import locale
 import sys
 locale.setlocale(locale.LC_ALL, '')
 
+try:
+    from prettytable import PrettyTable
+except ImportError:
+    print('Please install python3-prettytable on your system')
+    sys.exit(1)
 
 def opt_args():
     parser = kopano.parser('skfpcmuUP')
@@ -28,8 +32,9 @@ def sizeof_fmt(num, suffix='B'):
     return "%.1f%s%s" % (num, 'Yi', suffix)
 
 def get_stats(options, folders, storename):
-    table_header = ["Folder path", "Items in folder",  "Folder size"]
-    table_data = []
+    table = PrettyTable()
+    table.field_names = ["Folder path", "Items in folder",  "Folder size"]
+    table.align = 'l'
     items = 0
     store_size = 0
     total_folders = 0
@@ -58,13 +63,13 @@ def get_stats(options, folders, storename):
         total_folders += 1
         store_size += folder.size
 
-        table_data.append([name, count, '{} ({} bytes)'.format(sizeof_fmt(folder.size), size)])
+        table.add_row([name, count, '{} ({} bytes)'.format(sizeof_fmt(folder.size), size)])
 
     if options.summary:
         print('{}: {} ({} bytes)' .format(storename, sizeof_fmt(store_size), store_size))
     else:
         print('{} folders and {} items in store of {}'.format(total_folders, items, storename))
-        print(tabulate(table_data, headers=table_header, tablefmt="grid"))
+        print(table)
 
 def main():
     options, args = opt_args()
