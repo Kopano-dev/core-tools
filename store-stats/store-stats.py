@@ -57,7 +57,7 @@ def get_stats(options, folders, storename):
 
         else:
             count = folder.count
-        size = locale.format('%d', folder.size, 1)
+        size = locale.format_string('%d', folder.size, 1)
 
         items += count
         total_folders += 1
